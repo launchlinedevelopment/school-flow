@@ -102,34 +102,6 @@ const seededColleges = [
   {name:'Hofstra University',location:'Hempstead, New York',label:'No probability indicated',apps:['Common App']}
 ];
 
-const bbyoWeeklyTemplate = [
-  {id:'cp-josh',group:'Counterparts',label:'Josh Matthews — East Brunswick AZA'},
-  {id:'cp-charlie',group:'Counterparts',label:'Charlie Mason — Marlboro AZA (Home Chapter)'},
-  {id:'cp-ryan',group:'Counterparts',label:"Ryan Feldman — T'sahal BBYO"},
-  {id:'cp-jordan',group:'Counterparts',label:'Jordan Feldman — Chavi BBYO (Focus Chapter)'},
-  {id:'focus-chavi',group:'Focus Chapters',label:'Chavi BBYO',detail:'Point of Contact: Madelyn Paradise · +1 (908) 873-8370'},
-  {id:'focus-marlboro',group:'Focus Chapters',label:'Marlboro AZA',detail:'Point of Contact: Seth Borenstein · +1 (908) 670-5051'},
-  {id:'yacht',group:'Planning',label:'Check in on Yacht Party planning + sign-ups',until:'2026-10-17'}
-];
-
-const bbyoDailyTemplate = [
-  {id:'fallcon',label:'Check in on FallCon Steering + signups',until:'2026-11-20'}
-];
-
-const seededBbyoMeetings = [
-  {id:'bbyo-max-1on1',title:'1:1 w/ Max Nachman',mode:'Online',startDate:'2026-09-28',startTime:'17:00',endTime:'',recurrence:'biweekly',url:'https://bbyo-org.zoom.us/j/81844914425',location:''},
-  {id:'bbyo-sganim',title:"S'ganim Call w/ Max Nachman",mode:'Online',startDate:'2026-09-29',startTime:'17:00',endTime:'18:00',recurrence:'weekly',url:'https://bbyo-org.zoom.us/j/81014315071',location:''},
-  {id:'bbyo-thursday',title:'Thursday BBYO Meeting',mode:'Online',startDate:'2026-10-01',startTime:'18:30',endTime:'19:30',recurrence:'weekly',url:'https://bbyo-org.zoom.us/j/89346459243',location:''},
-  {id:'bbyo-fallcon-1',title:'FallCon Steering Meeting #1',mode:'Online',startDate:'2026-09-28',startTime:'18:00',endTime:'19:30',recurrence:'none',url:'https://bbyo-org.zoom.us/j/88681936317',location:''}
-];
-
-const seededCounterparts = [
-  {id:'josh',name:'Josh Matthews',chapter:'East Brunswick AZA',lastCheckIn:'',nextFollowUp:'',notes:''},
-  {id:'charlie',name:'Charlie Mason',chapter:'Marlboro AZA',lastCheckIn:'',nextFollowUp:'',notes:'Home Chapter'},
-  {id:'ryan',name:'Ryan Feldman',chapter:"T'sahal BBYO",lastCheckIn:'',nextFollowUp:'',notes:''},
-  {id:'jordan',name:'Jordan Feldman',chapter:'Chavi BBYO',lastCheckIn:'',nextFollowUp:'',notes:'Focus Chapter'}
-];
-
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -139,19 +111,13 @@ let activeNotesCourse = null;
 let editingItemId = null;
 let colleges = loadColleges();
 let collegeComparisons = loadCollegeComparisons();
-let bbyoMeetings = loadBbyoMeetings();
-let bbyoChecks = loadBbyoChecks();
-let bbyoVisits = loadBbyoVisits();
-let bbyoCounterparts = loadBbyoCounterparts();
-migrateBbyoSeedData();
 
 const views = {
   today:document.querySelector('#todayView'),
   week:document.querySelector('#weekView'),
   calendar:document.querySelector('#calendarView'),
   schedule:document.querySelector('#scheduleView'),
-  college:document.querySelector('#collegeView'),
-  bbyo:document.querySelector('#bbyoView')
+  college:document.querySelector('#collegeView')
 };
 const dialog = document.querySelector('#itemDialog');
 const form = document.querySelector('#itemForm');
@@ -183,7 +149,7 @@ document.querySelector('#exportDataBtn')?.addEventListener('click',exportAllData
 document.querySelector('#importDataInput')?.addEventListener('change',importAllData);
 
 function exportAllData(){
-  const data={version:3,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons,bbyoMeetings,bbyoChecks,bbyoVisits,bbyoCounterparts};
+  const data={version:2,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -203,11 +169,7 @@ function importAllData(event){
       if(data.classNotes&&typeof data.classNotes==='object') classNotes=data.classNotes;
       if(Array.isArray(data.colleges)) colleges=data.colleges;
       if(Array.isArray(data.collegeComparisons)) collegeComparisons=data.collegeComparisons;
-      if(Array.isArray(data.bbyoMeetings)) bbyoMeetings=data.bbyoMeetings;
-      if(data.bbyoChecks&&typeof data.bbyoChecks==='object') bbyoChecks=data.bbyoChecks;
-      if(Array.isArray(data.bbyoVisits)) bbyoVisits=data.bbyoVisits;
-      if(Array.isArray(data.bbyoCounterparts)) bbyoCounterparts=data.bbyoCounterparts;
-      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons(); persistBbyoMeetings(); persistBbyoChecks(); persistBbyoVisits(); persistBbyoCounterparts();
+      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons();
       renderAll();
       alert('Backup imported successfully.');
     }catch{alert('That backup file could not be read.')}
@@ -282,63 +244,6 @@ function loadColleges(){
 function persistColleges(){localStorage.setItem('schoolFlowColleges',JSON.stringify(colleges))}
 function loadCollegeComparisons(){try{return JSON.parse(localStorage.getItem('schoolFlowCollegeComparisons')||'[]')}catch{return[]}}
 function persistCollegeComparisons(){localStorage.setItem('schoolFlowCollegeComparisons',JSON.stringify(collegeComparisons))}
-function loadBbyoMeetings(){
-  try{
-    const saved=JSON.parse(localStorage.getItem('schoolFlowBbyoMeetings')||'null');
-    if(Array.isArray(saved)&&saved.length)return saved;
-  }catch{}
-  localStorage.setItem('schoolFlowBbyoMeetings',JSON.stringify(seededBbyoMeetings));
-  return seededBbyoMeetings.map(x=>({...x}));
-}
-function persistBbyoMeetings(){localStorage.setItem('schoolFlowBbyoMeetings',JSON.stringify(bbyoMeetings))}
-function migrateBbyoSeedData(){
-  const urls={
-    'bbyo-max-1on1':'https://bbyo-org.zoom.us/j/81844914425',
-    'bbyo-sganim':'https://bbyo-org.zoom.us/j/81014315071',
-    'bbyo-thursday':'https://bbyo-org.zoom.us/j/89346459243',
-    'bbyo-fallcon-1':'https://bbyo-org.zoom.us/j/88681936317'
-  };
-  let changed=false;
-  bbyoMeetings.forEach(m=>{if(urls[m.id]&&m.url!==urls[m.id]){m.url=urls[m.id];changed=true}});
-  if(changed)persistBbyoMeetings();
-}
-function loadBbyoChecks(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoChecks')||'{}')}catch{return{}}}
-function persistBbyoChecks(){localStorage.setItem('schoolFlowBbyoChecks',JSON.stringify(bbyoChecks))}
-function loadBbyoVisits(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoVisits')||'[]')}catch{return[]}}
-function persistBbyoVisits(){localStorage.setItem('schoolFlowBbyoVisits',JSON.stringify(bbyoVisits))}
-function loadBbyoCounterparts(){
-  try{
-    const saved=JSON.parse(localStorage.getItem('schoolFlowBbyoCounterparts')||'null');
-    if(Array.isArray(saved)&&saved.length)return saved;
-  }catch{}
-  localStorage.setItem('schoolFlowBbyoCounterparts',JSON.stringify(seededCounterparts));
-  return seededCounterparts.map(x=>({...x}));
-}
-function persistBbyoCounterparts(){localStorage.setItem('schoolFlowBbyoCounterparts',JSON.stringify(bbyoCounterparts))}
-function meetingsForDate(d){return bbyoMeetings.filter(m=>meetingOccursOn(m,d)).sort((a,b)=>a.startTime.localeCompare(b.startTime))}
-function mondayKey(date=new Date()){
-  const d=startOfDay(date), offset=(d.getDay()+6)%7;
-  return key(addDays(d,-offset));
-}
-function isCheckDone(id,scope='weekly'){
-  const bucket=scope==='daily'?key(new Date()):mondayKey(new Date());
-  return !!bbyoChecks[bucket]?.[id];
-}
-function setCheckDone(id,done,scope='weekly'){
-  const bucket=scope==='daily'?key(new Date()):mondayKey(new Date());
-  if(!bbyoChecks[bucket])bbyoChecks[bucket]={};
-  bbyoChecks[bucket][id]=done;
-  persistBbyoChecks();
-}
-function meetingOccursOn(meeting,date){
-  const start=new Date(meeting.startDate+'T12:00:00'), target=startOfDay(date);
-  if(target<start)return false;
-  const diff=Math.round((target-start)/86400000);
-  if(meeting.recurrence==='none')return diff===0;
-  if(meeting.recurrence==='weekly')return diff%7===0;
-  if(meeting.recurrence==='biweekly')return diff%14===0;
-  return false;
-}
 function loadClassNotes(){try{return JSON.parse(localStorage.getItem('schoolFlowClassNotes')||'{}')}catch{return{}}}
 function persistClassNotes(){localStorage.setItem('schoolFlowClassNotes',JSON.stringify(classNotes))}
 function openClassNotes(course,date=selectedDate){
@@ -509,9 +414,6 @@ function buildAgendaEntries(d,letter){
   getItemsFor(d).forEach(item=>{
     entries.push({kind:'plan',sort:item.time?minutesFromTime(item.time):24*60+1,item});
   });
-  meetingsForDate(d).forEach(meeting=>{
-    entries.push({kind:'bbyo',sort:minutesFromTime(meeting.startTime),meeting});
-  });
   return entries.sort((a,b)=>a.sort-b.sort || (a.kind==='class'?-1:1));
 }
 function renderAgenda(d,letter,compact=false){
@@ -530,15 +432,6 @@ function renderAgenda(d,letter,compact=false){
     if(entry.kind==='lunch'){
       if(compact) return '<div class="mini-item lunch-mini"><strong>Lunch</strong><div class="tiny">12:00 PM–12:35 PM</div></div>';
       return '<div class="lunch-row agenda-lunch"><span><strong>Lunch</strong></span><strong>12:00–12:35</strong></div>';
-    }
-    if(entry.kind==='bbyo'){
-      const m=entry.meeting;
-      if(compact) return `<div class="mini-item bbyo-mini"><strong>${esc(m.title)}</strong><div class="tiny">${formatTime(m.startTime)}${m.endTime?'–'+formatTime(m.endTime):''} · BBYO</div></div>`;
-      return `<div class="agenda-plan bbyo-agenda">
-        <div class="agenda-plan-time">${formatTime(m.startTime)}</div>
-        <div><div class="agenda-plan-title">${esc(m.title)}</div><div class="agenda-plan-meta">BBYO · ${esc(m.mode)}${m.endTime?' · ends '+formatTime(m.endTime):''}</div></div>
-        <div class="agenda-plan-actions"><div class="agenda-plan-chip">BBYO</div>${m.url?`<a class="edit-event-btn" href="${esc(m.url)}" target="_blank" rel="noopener">Join</a>`:''}</div>
-      </div>`;
     }
     const i=entry.item;
     if(compact) return `<div class="mini-item plan-mini ${i.type==='College'?'college-mini':''}"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):'Anytime'} · ${i.type}</div></div>`;
@@ -667,12 +560,12 @@ function renderCalendar(){
   document.querySelectorAll('.cal-day').forEach(c=>c.onclick=()=>{selectedDate=new Date(c.dataset.date+'T12:00:00');renderToday();switchView('today')});
 }
 function renderCalDay(d,currentMonth){
-  const letter=getDayLetter(d), list=getItemsFor(d), bbyoList=meetingsForDate(d), special=specialDays[key(d)], closed=closedDates.has(key(d));
+  const letter=getDayLetter(d), list=getItemsFor(d), special=specialDays[key(d)], closed=closedDates.has(key(d));
   return `<div class="cal-day ${d.getMonth()!==currentMonth?'other':''} ${isSameDay(d,new Date())?'today':''}" data-date="${key(d)}">
     <div class="cal-num">${d.getDate()}</div>
     ${letter?`<div class="cal-letter">${letter}</div>`:''}
     <div class="cal-events">
-      ${[...list.map(i=>({time:i.time,title:i.title,type:i.type})),...bbyoList.map(m=>({time:m.startTime,title:m.title,type:'BBYO'}))].sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99')).slice(0,2).map(i=>`<div class="${i.type==='BBYO'?'cal-bbyo-event':''}"><span class="cal-dot"></span>${i.time?formatTime(i.time)+' · ':''}${esc(i.title)}</div>`).join('')}
+      ${list.slice(0,2).map(i=>`<div><span class="cal-dot"></span>${i.time?formatTime(i.time)+' · ':''}${esc(i.title)}</div>`).join('')}
       ${list.length>2?`<div>+${list.length-2} more</div>`:''}
     </div>
     ${closed?'<div class="closed-note">No school</div>':special?`<div class="closed-note">${special}</div>`:''}
@@ -779,244 +672,7 @@ function updateCollege(id,changes){
   persistColleges();
   if(changes.status) renderCollegeApps();
 }
-function nextMeetingOccurrences(days=28){
-  const out=[], today=startOfDay(new Date());
-  for(let i=0;i<days;i++){
-    const d=addDays(today,i);
-    bbyoMeetings.forEach(m=>{if(meetingOccursOn(m,d))out.push({meeting:m,date:d})});
-  }
-  return out.sort((a,b)=>key(a.date).localeCompare(key(b.date))||a.meeting.startTime.localeCompare(b.meeting.startTime));
-}
-function renderBbyo(){
-  const today=new Date(), todayKey=key(today);
-  const weekly=bbyoWeeklyTemplate.filter(x=>!x.until||todayKey<=x.until);
-  const daily=bbyoDailyTemplate.filter(x=>!x.until||todayKey<=x.until);
-  const upcoming=nextMeetingOccurrences();
-  const weeklyDone=weekly.filter(x=>isCheckDone(x.id,'weekly')).length;
-  const dailyDone=daily.filter(x=>isCheckDone(x.id,'daily')).length;
-  const totalActive=weekly.length+daily.length;
-  const totalDone=weeklyDone+dailyDone;
-  const progress=totalActive?Math.round((totalDone/totalActive)*100):100;
-  const next=upcoming[0];
-  const counterpartDone=weekly.filter(x=>x.group==='Counterparts'&&isCheckDone(x.id,'weekly')).length;
-  const counterpartTotal=weekly.filter(x=>x.group==='Counterparts').length;
-  const focusDone=weekly.filter(x=>x.group==='Focus Chapters'&&isCheckDone(x.id,'weekly')).length;
-  const focusTotal=weekly.filter(x=>x.group==='Focus Chapters').length;
-
-  views.bbyo.innerHTML=`
-    <section class="bbyo-command-hero">
-      <div class="bbyo-command-copy">
-        <div class="bbyo-kicker"><span class="bbyo-live-dot"></span> GREATER JERSEY REGION · S'GAN</div>
-        <h1>Lead the week.<br><span>Stay ahead.</span></h1>
-        <p>One place for counterparts, focus chapters, steering, calls, and everything you need to keep moving.</p>
-        <div class="bbyo-hero-pills">
-          <span>Week of ${niceDate(new Date(mondayKey(today)+'T12:00:00'),{month:'short',day:'numeric'})}</span>
-          <span>${upcoming.length} upcoming meetings</span>
-          <span>${progress}% complete</span>
-        </div>
-      </div>
-      <div class="bbyo-progress-orb" style="--progress:${progress*3.6}deg">
-        <div class="bbyo-progress-inner"><strong>${progress}%</strong><span>week locked in</span></div>
-      </div>
-    </section>
-
-    <section class="bbyo-stats-row">
-      <article class="bbyo-stat-card">
-        <div class="bbyo-stat-icon">↗</div>
-        <div><span>Counterparts</span><strong>${counterpartDone}/${counterpartTotal}</strong><small>checked in</small></div>
-      </article>
-      <article class="bbyo-stat-card">
-        <div class="bbyo-stat-icon">◎</div>
-        <div><span>Focus Chapters</span><strong>${focusDone}/${focusTotal}</strong><small>touched base</small></div>
-      </article>
-      <article class="bbyo-stat-card accent-card">
-        <div class="bbyo-stat-icon">⚡</div>
-        <div><span>Daily Priority</span><strong>${dailyDone}/${daily.length}</strong><small>FallCon steering</small></div>
-      </article>
-      <article class="bbyo-stat-card">
-        <div class="bbyo-stat-icon">◷</div>
-        <div><span>Next Meeting</span><strong>${next?formatTime(next.meeting.startTime):'—'}</strong><small>${next?esc(next.meeting.title):'Nothing upcoming'}</small></div>
-      </article>
-    </section>
-
-    ${next?`<section class="bbyo-next-meeting">
-      <div class="next-meeting-date">
-        <span>${niceDate(next.date,{weekday:'short'}).toUpperCase()}</span>
-        <strong>${next.date.getDate()}</strong>
-        <small>${niceDate(next.date,{month:'short'}).toUpperCase()}</small>
-      </div>
-      <div class="next-meeting-main">
-        <div class="bbyo-kicker">UP NEXT</div>
-        <h2>${esc(next.meeting.title)}</h2>
-        <p>${formatTime(next.meeting.startTime)}${next.meeting.endTime?' – '+formatTime(next.meeting.endTime):''} · ${esc(next.meeting.mode)}${next.meeting.location?' · '+esc(next.meeting.location):''}</p>
-      </div>
-      <div class="next-meeting-actions">
-        ${next.meeting.url?`<a class="bbyo-join-main" href="${esc(next.meeting.url)}" target="_blank" rel="noopener">Join Meeting <span>↗</span></a>`:''}
-      </div>
-    </section>`:''}
-
-    <div class="bbyo-main-grid">
-      <section class="bbyo-panel bbyo-checklist-panel">
-        <div class="bbyo-panel-head">
-          <div>
-            <div class="bbyo-kicker">MISSION CONTROL</div>
-            <h2>This Week</h2>
-          </div>
-          <div class="bbyo-mini-progress"><span style="width:${progress}%"></span></div>
-        </div>
-
-        <div class="bbyo-check-groups">
-          ${['Counterparts','Focus Chapters','Planning'].map(group=>{
-            const rows=weekly.filter(x=>x.group===group);
-            if(!rows.length)return '';
-            const done=rows.filter(x=>isCheckDone(x.id,'weekly')).length;
-            return `<div class="bbyo-check-group premium-group">
-              <div class="bbyo-group-head"><div><span class="bbyo-group-dot"></span>${group}</div><span>${done}/${rows.length}</span></div>
-              ${rows.map(x=>`<label class="bbyo-check-row premium-check ${isCheckDone(x.id,'weekly')?'done':''}">
-                <input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="weekly" ${isCheckDone(x.id,'weekly')?'checked':''}>
-                <span class="custom-check"></span>
-                <span class="check-copy"><strong>${esc(x.label)}</strong>${x.detail?`<small>${esc(x.detail)}</small>`:''}${x.until?`<small class="deadline-small">Through ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small>`:''}</span>
-              </label>`).join('')}
-            </div>`;
-          }).join('')}
-          ${daily.length?`<div class="bbyo-check-group premium-group priority-group">
-            <div class="bbyo-group-head"><div><span class="bbyo-group-dot priority-dot"></span>Daily Priority</div><span>${dailyDone}/${daily.length}</span></div>
-            ${daily.map(x=>`<label class="bbyo-check-row premium-check ${isCheckDone(x.id,'daily')?'done':''}">
-              <input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="daily" ${isCheckDone(x.id,'daily')?'checked':''}>
-              <span class="custom-check"></span>
-              <span class="check-copy"><strong>${esc(x.label)}</strong><small>Do this every day · through ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small></span>
-            </label>`).join('')}
-          </div>`:''}
-        </div>
-      </section>
-
-      <section class="bbyo-panel bbyo-contact-panel">
-        <div class="bbyo-panel-head">
-          <div><div class="bbyo-kicker">FOCUS CHAPTERS</div><h2>Quick Contacts</h2></div>
-        </div>
-        <div class="bbyo-contact-grid">
-          <article class="bbyo-contact-card">
-            <div class="contact-avatar">C</div>
-            <div class="contact-info"><span>Chavi BBYO</span><strong>Madelyn Paradise</strong><a href="tel:+19088738370">+1 (908) 873-8370</a></div>
-            <a class="contact-action" href="tel:+19088738370">Call</a>
-          </article>
-          <article class="bbyo-contact-card">
-            <div class="contact-avatar">M</div>
-            <div class="contact-info"><span>Marlboro AZA</span><strong>Seth Borenstein</strong><a href="tel:+19086705051">+1 (908) 670-5051</a></div>
-            <a class="contact-action" href="tel:+19086705051">Call</a>
-          </article>
-        </div>
-
-        <div class="bbyo-counterpart-strip">
-          <div class="bbyo-kicker">COUNTERPARTS</div>
-          <div class="counterpart-chips">
-            <span>JM <b>Josh</b></span>
-            <span>CM <b>Charlie</b></span>
-            <span>RF <b>Ryan</b></span>
-            <span>JF <b>Jordan</b></span>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <section class="bbyo-panel bbyo-crm-panel">
-      <div class="bbyo-panel-head"><div><div class="bbyo-kicker">COUNTERPART CRM</div><h2>People to Reach Out To</h2><p>Track check-ins, notes, and who needs a follow-up.</p></div></div>
-      <div class="crm-grid">
-        ${bbyoCounterparts.map(c=>{
-          const overdue=c.nextFollowUp && c.nextFollowUp<=todayKey;
-          return `<article class="crm-card ${overdue?'needs-followup':''}">
-            <div class="crm-card-head"><div class="crm-avatar">${c.name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong>${esc(c.name)}</strong><span>${esc(c.chapter)}</span></div>${overdue?'<b>Follow up</b>':''}</div>
-            <div class="crm-fields">
-              <label>Last check-in<input class="crm-last" data-id="${c.id}" type="date" value="${c.lastCheckIn||''}"></label>
-              <label>Next follow-up<input class="crm-next" data-id="${c.id}" type="date" value="${c.nextFollowUp||''}"></label>
-            </div>
-            <label class="crm-notes-label">Notes<textarea class="crm-notes" data-id="${c.id}" rows="2" placeholder="What did you talk about?">${esc(c.notes||'')}</textarea></label>
-          </article>`;
-        }).join('')}
-      </div>
-    </section>
-
-    <section class="bbyo-panel bbyo-visits-panel">
-      <div class="bbyo-panel-head"><div><div class="bbyo-kicker">CHAPTER VISITS</div><h2>Visit Tracker</h2><p>Save what happened, what they need, and what you should do next.</p></div><span class="visit-count">${bbyoVisits.length} visits</span></div>
-      <form id="chapterVisitForm" class="visit-form">
-        <input id="visitChapter" placeholder="Chapter" required>
-        <input id="visitDate" type="date" required>
-        <input id="visitWentWell" placeholder="What went well?">
-        <input id="visitNeedsHelp" placeholder="What do they need help with?">
-        <input id="visitFollowUp" placeholder="Follow-up / next step">
-        <button type="submit" class="bbyo-add-visit-btn">Log Visit ＋</button>
-      </form>
-      <div class="visit-history">
-        ${bbyoVisits.length?bbyoVisits.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(v=>`<article class="visit-card">
-          <div class="visit-date-block"><strong>${new Date(v.date+'T12:00:00').getDate()}</strong><span>${niceDate(new Date(v.date+'T12:00:00'),{month:'short'})}</span></div>
-          <div class="visit-copy"><h3>${esc(v.chapter)}</h3>${v.wentWell?`<p><b>Went well:</b> ${esc(v.wentWell)}</p>`:''}${v.needsHelp?`<p><b>Needs help:</b> ${esc(v.needsHelp)}</p>`:''}${v.followUp?`<p><b>Next:</b> ${esc(v.followUp)}</p>`:''}</div>
-          <button class="visit-delete" data-id="${v.id}">×</button>
-        </article>`).join(''):'<div class="empty compact-empty">No chapter visits logged yet.</div>'}
-      </div>
-    </section>
-
-    <section class="bbyo-panel bbyo-meeting-panel">
-      <div class="bbyo-panel-head meeting-panel-head">
-        <div><div class="bbyo-kicker">CALENDAR</div><h2>Upcoming Meetings</h2></div>
-        <span class="muted">Next 4 weeks</span>
-      </div>
-      <div class="meeting-timeline">
-        ${upcoming.length?upcoming.slice(0,12).map(({meeting:m,date:d},idx)=>`
-          <div class="meeting-timeline-row ${idx===0?'next':''}">
-            <div class="timeline-line"><span></span></div>
-            <div class="meeting-date premium-date"><strong>${niceDate(d,{weekday:'short'})}</strong><span>${niceDate(d,{month:'short',day:'numeric'})}</span></div>
-            <div class="meeting-main premium-meeting-main">
-              <strong>${esc(m.title)}</strong>
-              <span>${formatTime(m.startTime)}${m.endTime?' – '+formatTime(m.endTime):''}</span>
-              <small>${esc(m.mode)}${m.location?' · '+esc(m.location):''}${m.recurrence!=='none'?' · '+(m.recurrence==='weekly'?'Weekly':'Every other week'):''}</small>
-            </div>
-            <div class="meeting-actions premium-actions">
-              ${m.url?`<a class="join-btn premium-join" href="${esc(m.url)}" target="_blank" rel="noopener">Join ↗</a>`:''}
-              <button class="meeting-delete" data-id="${m.id}" title="Delete meeting">×</button>
-            </div>
-          </div>`).join(''):'<div class="empty compact-empty">No upcoming meetings.</div>'}
-      </div>
-    </section>
-
-    <section class="bbyo-panel add-meeting-card premium-add-card">
-      <div class="bbyo-panel-head">
-        <div><div class="bbyo-kicker">NEW EVENT</div><h2>Add a Meeting</h2><p>Online, in-person, one-time, or recurring.</p></div>
-      </div>
-      <form id="bbyoMeetingForm" class="meeting-form premium-form">
-        <label><span>Meeting name</span><input id="bbyoMeetingTitle" placeholder="e.g. Chapter visit" required></label>
-        <label><span>Type</span><select id="bbyoMeetingMode"><option>Online</option><option>In-Person</option></select></label>
-        <label><span>Date</span><input id="bbyoMeetingDate" type="date" required></label>
-        <label><span>Starts</span><input id="bbyoMeetingStart" type="time" required></label>
-        <label><span>Ends</span><input id="bbyoMeetingEnd" type="time"></label>
-        <label><span>Repeats</span><select id="bbyoMeetingRecurrence"><option value="none">Does not repeat</option><option value="weekly">Weekly</option><option value="biweekly">Every other week</option></select></label>
-        <label class="wide-field"><span>Meeting link</span><input id="bbyoMeetingUrl" type="url" placeholder="https://..."></label>
-        <label class="wide-field"><span>Location</span><input id="bbyoMeetingLocation" placeholder="For in-person meetings"></label>
-        <button class="bbyo-add-meeting-btn" type="submit">Add to BBYO Calendar <span>＋</span></button>
-      </form>
-    </section>`;
-
-  document.querySelectorAll('.bbyo-check').forEach(cb=>cb.onchange=()=>{setCheckDone(cb.dataset.id,cb.checked,cb.dataset.scope);renderBbyo()});
-  document.querySelectorAll('.meeting-delete').forEach(btn=>btn.onclick=()=>{bbyoMeetings=bbyoMeetings.filter(x=>x.id!==btn.dataset.id);persistBbyoMeetings();renderBbyo()});
-  document.querySelectorAll('.crm-last').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.lastCheckIn=el.value;persistBbyoCounterparts();renderBbyo()}});
-  document.querySelectorAll('.crm-next').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.nextFollowUp=el.value;persistBbyoCounterparts();renderBbyo()}});
-  document.querySelectorAll('.crm-notes').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.notes=el.value;persistBbyoCounterparts()}});
-  document.querySelectorAll('.visit-delete').forEach(btn=>btn.onclick=()=>{bbyoVisits=bbyoVisits.filter(x=>x.id!==btn.dataset.id);persistBbyoVisits();renderBbyo()});
-  document.querySelector('#chapterVisitForm')?.addEventListener('submit',e=>{
-    e.preventDefault();
-    const chapter=document.querySelector('#visitChapter').value.trim(), date=document.querySelector('#visitDate').value;
-    if(!chapter||!date)return;
-    bbyoVisits.push({id:'visit-'+Date.now(),chapter,date,wentWell:document.querySelector('#visitWentWell').value.trim(),needsHelp:document.querySelector('#visitNeedsHelp').value.trim(),followUp:document.querySelector('#visitFollowUp').value.trim()});
-    persistBbyoVisits();renderBbyo();
-  });
-  document.querySelector('#bbyoMeetingForm')?.addEventListener('submit',e=>{
-    e.preventDefault();
-    const title=document.querySelector('#bbyoMeetingTitle').value.trim(), startDate=document.querySelector('#bbyoMeetingDate').value, startTime=document.querySelector('#bbyoMeetingStart').value;
-    if(!title||!startDate||!startTime)return;
-    bbyoMeetings.push({id:'bbyo-'+Date.now(),title,mode:document.querySelector('#bbyoMeetingMode').value,startDate,startTime,endTime:document.querySelector('#bbyoMeetingEnd').value,recurrence:document.querySelector('#bbyoMeetingRecurrence').value,url:document.querySelector('#bbyoMeetingUrl').value.trim(),location:document.querySelector('#bbyoMeetingLocation').value.trim()});
-    persistBbyoMeetings(); renderBbyo();
-  });
-}
-function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule();renderCollegeApps();renderBbyo()}
+function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule();renderCollegeApps()}
 renderAll();
 setInterval(()=>renderLiveStatus(),1000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
