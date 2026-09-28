@@ -1,0 +1,9 @@
+{
+  "name":"School Flow Daily Planner",
+  "short_name":"School Flow",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#070b16",
+  "theme_color":"#0b1020",
+  "icons":[]
+}
