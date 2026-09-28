@@ -39,7 +39,11 @@ const specialDays = {
 };
 
 const times = [
-  ['Block 1','8:24','9:31'],['Block 2','9:36','10:43'],['Block 3','10:48','11:55'],['Block 4','12:41','1:48'],['Block 5','1:53','3:00']
+  ['Block 1','8:24','9:31'],
+  ['Block 2','9:36','10:43'],
+  ['Block 3','10:48','11:55'],
+  ['Block 4','12:41','13:48'],
+  ['Block 5','13:53','15:00']
 ];
 
 const baseSchedule = {
@@ -453,7 +457,7 @@ function renderSchedule(){
     <div class="schedule-matrix">
       <div class="matrix-cell matrix-head">Block</div>
       ${DAY_LETTERS.map(l=>`<div class="matrix-cell matrix-head">${l}</div>`).join('')}
-      ${times.map((t,i)=>`<div class="matrix-cell block-label">${t[0]}<br><span class="muted">${t[1]}–${t[2]}</span></div>${DAY_LETTERS.map(l=>{const c=baseSchedule[l][i];return `<div class="matrix-cell"><div class="matrix-class">${classDisplay(c,ref)}</div><div class="matrix-room">${teachers[c]} · ${roomDisplay(c,ref)}</div></div>`}).join('')}`).join('')}
+      ${times.map((t,i)=>`<div class="matrix-cell block-label">${t[0]}<br><span class="muted">${formatTime(t[1])}–${formatTime(t[2])}</span></div>${DAY_LETTERS.map(l=>{const c=baseSchedule[l][i];return `<div class="matrix-cell"><div class="matrix-class">${classDisplay(c,ref)}</div><div class="matrix-room">${teachers[c]} · ${roomDisplay(c,ref)}</div></div>`}).join('')}`).join('')}
     </div>
     <div class="schedule-note">Lunch is 12:00–12:35 every school day. AP Economics changes from Microeconomics to Macroeconomics starting Q3. PE changes to Health in Q2 and returns to PE in Q3/Q4.</div>
   </div>`;
