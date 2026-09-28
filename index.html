@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>School Flow — Daily Planner</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-mark">SF</div>
+        <div>
+          <div class="brand-title">School Flow</div>
+          <div class="brand-sub">Your senior-year command center</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="ghost-btn" id="todayBtn">Today</button>
+        <button class="primary-btn" id="newItemBtn">+ Add plan</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar glass">
+        <nav>
+          <button class="nav-item active" data-view="today"><span>✦</span>Today</button>
+          <button class="nav-item" data-view="week"><span>▦</span>Week</button>
+          <button class="nav-item" data-view="calendar"><span>◫</span>Calendar</button>
+          <button class="nav-item" data-view="schedule"><span>⌁</span>Block Schedule</button>
+        </nav>
+        <div class="sidebar-card">
+          <div class="eyebrow">ROTATION</div>
+          <div class="rotation-row"><span>Anchor</span><strong>Sep 28 = G</strong></div>
+          <div class="rotation-row"><span>Cycle</span><strong>A → G</strong></div>
+          <div class="rotation-row"><span>Days off</span><strong>Do not advance</strong></div>
+        </div>
+        <div class="sidebar-card mini-quote">
+          <div class="eyebrow">FOCUS</div>
+          <p>Know what is next. Get it done. Move on.</p>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div id="todayView" class="view active"></div>
+        <div id="weekView" class="view"></div>
+        <div id="calendarView" class="view"></div>
+        <div id="scheduleView" class="view"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="itemDialog" class="planner-dialog">
+    <form method="dialog" id="itemForm">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">NEW PLAN</div>
+          <h2>Add something to your day</h2>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Close">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Title<input id="itemTitle" required placeholder="Study for anatomy quiz" /></label>
+        <label>Date<input id="itemDate" type="date" required /></label>
+        <label>Time<input id="itemTime" type="time" /></label>
+        <label>Type<select id="itemType"><option>Homework</option><option>Test / Quiz</option><option>School</option><option>Activity</option><option>Personal</option></select></label>
+        <label>Priority<select id="itemPriority"><option>Normal</option><option>High</option><option>Low</option></select></label>
+        <label class="full">Class<select id="itemClass"><option value="">No class</option></select></label>
+        <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Anything you want to remember..."></textarea></label>
+      </div>
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="saveItemBtn" value="default" class="primary-btn">Save plan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
