@@ -80,6 +80,26 @@
     </form>
   </dialog>
 
+  <dialog id="classNotesDialog" class="planner-dialog notes-dialog">
+    <form method="dialog" id="classNotesForm">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">CLASS NOTES</div>
+          <h2 id="classNotesTitle">Notes</h2>
+          <div id="classNotesMeta" class="muted"></div>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Close">×</button>
+      </div>
+      <label class="notes-label">Your notes
+        <textarea id="classNotesText" rows="10" placeholder="Keep reminders, links, study notes, things to ask the teacher, or anything else for this class..."></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="saveClassNotesBtn" value="default" class="primary-btn">Save notes</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
