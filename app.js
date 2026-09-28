@@ -107,8 +107,8 @@ const bbyoWeeklyTemplate = [
   {id:'cp-charlie',group:'Counterparts',label:'Charlie Mason — Marlboro AZA (Home Chapter)'},
   {id:'cp-ryan',group:'Counterparts',label:"Ryan Feldman — T'sahal BBYO"},
   {id:'cp-jordan',group:'Counterparts',label:'Jordan Feldman — Chavi BBYO (Focus Chapter)'},
-  {id:'focus-chavi',group:'Focus Chapters',label:'Chavi BBYO',detail:'Point of Contact: Madelyn Paradise'},
-  {id:'focus-marlboro',group:'Focus Chapters',label:'Marlboro AZA',detail:'Point of Contact: Seth Borenstein'},
+  {id:'focus-chavi',group:'Focus Chapters',label:'Chavi BBYO',detail:'Point of Contact: Madelyn Paradise · +1 (908) 873-8370'},
+  {id:'focus-marlboro',group:'Focus Chapters',label:'Marlboro AZA',detail:'Point of Contact: Seth Borenstein · +1 (908) 670-5051'},
   {id:'yacht',group:'Planning',label:'Check in on Yacht Party planning + sign-ups',until:'2026-10-17'}
 ];
 
@@ -117,10 +117,10 @@ const bbyoDailyTemplate = [
 ];
 
 const seededBbyoMeetings = [
-  {id:'bbyo-max-1on1',title:'1:1 w/ Max Nachman',mode:'Online',startDate:'2026-09-28',startTime:'17:00',endTime:'',recurrence:'biweekly',url:'',location:''},
-  {id:'bbyo-sganim',title:"S'ganim Call w/ Max Nachman",mode:'Online',startDate:'2026-09-29',startTime:'17:00',endTime:'18:00',recurrence:'weekly',url:'',location:''},
-  {id:'bbyo-thursday',title:'Thursday BBYO Meeting',mode:'Online',startDate:'2026-10-01',startTime:'18:30',endTime:'19:30',recurrence:'weekly',url:'',location:''},
-  {id:'bbyo-fallcon-1',title:'FallCon Steering Meeting #1',mode:'Online',startDate:'2026-09-28',startTime:'18:00',endTime:'19:30',recurrence:'none',url:'',location:''}
+  {id:'bbyo-max-1on1',title:'1:1 w/ Max Nachman',mode:'Online',startDate:'2026-09-28',startTime:'17:00',endTime:'',recurrence:'biweekly',url:'https://bbyo-org.zoom.us/j/81844914425',location:''},
+  {id:'bbyo-sganim',title:"S'ganim Call w/ Max Nachman",mode:'Online',startDate:'2026-09-29',startTime:'17:00',endTime:'18:00',recurrence:'weekly',url:'https://bbyo-org.zoom.us/j/81014315071',location:''},
+  {id:'bbyo-thursday',title:'Thursday BBYO Meeting',mode:'Online',startDate:'2026-10-01',startTime:'18:30',endTime:'19:30',recurrence:'weekly',url:'https://bbyo-org.zoom.us/j/89346459243',location:''},
+  {id:'bbyo-fallcon-1',title:'FallCon Steering Meeting #1',mode:'Online',startDate:'2026-09-28',startTime:'18:00',endTime:'19:30',recurrence:'none',url:'https://bbyo-org.zoom.us/j/88681936317',location:''}
 ];
 
 let selectedDate = startOfDay(new Date());
@@ -134,6 +134,7 @@ let colleges = loadColleges();
 let collegeComparisons = loadCollegeComparisons();
 let bbyoMeetings = loadBbyoMeetings();
 let bbyoChecks = loadBbyoChecks();
+migrateBbyoSeedData();
 
 const views = {
   today:document.querySelector('#todayView'),
@@ -279,6 +280,17 @@ function loadBbyoMeetings(){
   return seededBbyoMeetings.map(x=>({...x}));
 }
 function persistBbyoMeetings(){localStorage.setItem('schoolFlowBbyoMeetings',JSON.stringify(bbyoMeetings))}
+function migrateBbyoSeedData(){
+  const urls={
+    'bbyo-max-1on1':'https://bbyo-org.zoom.us/j/81844914425',
+    'bbyo-sganim':'https://bbyo-org.zoom.us/j/81014315071',
+    'bbyo-thursday':'https://bbyo-org.zoom.us/j/89346459243',
+    'bbyo-fallcon-1':'https://bbyo-org.zoom.us/j/88681936317'
+  };
+  let changed=false;
+  bbyoMeetings.forEach(m=>{if(urls[m.id]&&m.url!==urls[m.id]){m.url=urls[m.id];changed=true}});
+  if(changed)persistBbyoMeetings();
+}
 function loadBbyoChecks(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoChecks')||'{}')}catch{return{}}}
 function persistBbyoChecks(){localStorage.setItem('schoolFlowBbyoChecks',JSON.stringify(bbyoChecks))}
 function mondayKey(date=new Date()){
