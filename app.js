@@ -76,6 +76,32 @@ const teachers = {
   'PE / Health 12':'Broder'
 };
 
+const transcriptProfile = {
+  cumulativeGPA:4.1845,
+  creditsEarned:105,
+  yearly:[
+    {grade:'9',year:'2023–24',gpa:3.9714},
+    {grade:'10',year:'2024–25',gpa:4.3036},
+    {grade:'11',year:'2025–26',gpa:4.2786}
+  ],
+  highlights:['Honors English 2 — A-','Honors Algebra 1 — B','Honors Algebra 2 — C-','Lab Chemistry — A-','Lab Environmental Science — A-','Business Law & Ethics — A','Business Management — A+','BCC ENG121 — A']
+};
+
+const seededColleges = [
+  {name:'University of Delaware',location:'Newark, Delaware',label:'Likely',apps:['Common App','Coalition']},
+  {name:'University of Rhode Island',location:'Kingston, Rhode Island',label:'Likely',apps:['Common App']},
+  {name:'Syracuse University',location:'Syracuse, New York',label:'Likely',apps:['Common App','Coalition']},
+  {name:'University of Connecticut',location:'Storrs, Connecticut',label:'Probable',apps:['Common App','Coalition']},
+  {name:'University of Pittsburgh-Pittsburgh Campus',location:'Pittsburgh, Pennsylvania',label:'Probable',apps:['Common App']},
+  {name:'Binghamton University',location:'Vestal, New York',label:'Probable',apps:['Common App','Coalition']},
+  {name:'Pennsylvania State University - Main Campus',location:'University Park, Pennsylvania',label:'Probable',apps:['Common App']},
+  {name:'Tulane University',location:'New Orleans, Louisiana',label:'Probable',apps:['Common App']},
+  {name:'Rutgers University-New Brunswick',location:'New Brunswick, New Jersey',label:'Reach',apps:['Common App']},
+  {name:'University of Maryland-College Park',location:'College Park, Maryland',label:'Reach',apps:['Common App']},
+  {name:'University of Massachusetts-Amherst',location:'Amherst, Massachusetts',label:'Reach',apps:['Common App']},
+  {name:'Hofstra University',location:'Hempstead, New York',label:'No probability indicated',apps:['Common App']}
+];
+
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -83,12 +109,15 @@ let items = loadItems();
 let classNotes = loadClassNotes();
 let activeNotesCourse = null;
 let editingItemId = null;
+let colleges = loadColleges();
+let collegeComparisons = loadCollegeComparisons();
 
 const views = {
   today:document.querySelector('#todayView'),
   week:document.querySelector('#weekView'),
   calendar:document.querySelector('#calendarView'),
-  schedule:document.querySelector('#scheduleView')
+  schedule:document.querySelector('#scheduleView'),
+  college:document.querySelector('#collegeView')
 };
 const dialog = document.querySelector('#itemDialog');
 const form = document.querySelector('#itemForm');
@@ -116,7 +145,38 @@ document.querySelector('#todayBtn').addEventListener('click',()=>{
 document.querySelector('#newItemBtn').addEventListener('click',()=>openDialog(selectedDate));
 document.querySelector('#saveItemBtn').addEventListener('click',(e)=>{e.preventDefault();saveItem();});
 document.querySelector('#saveClassNotesBtn').addEventListener('click',(e)=>{e.preventDefault();saveClassNotes();});
+document.querySelector('#exportDataBtn')?.addEventListener('click',exportAllData);
+document.querySelector('#importDataInput')?.addEventListener('change',importAllData);
 
+function exportAllData(){
+  const data={version:1,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='school-flow-backup.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function importAllData(event){
+  const file=event.target.files?.[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(Array.isArray(data.items)) items=data.items;
+      if(data.classNotes&&typeof data.classNotes==='object') classNotes=data.classNotes;
+      if(Array.isArray(data.colleges)) colleges=data.colleges;
+      if(Array.isArray(data.collegeComparisons)) collegeComparisons=data.collegeComparisons;
+      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons();
+      renderAll();
+      alert('Backup imported successfully.');
+    }catch{alert('That backup file could not be read.')}
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
 function switchView(name,btn){
   Object.values(views).forEach(v=>v.classList.remove('active'));
   views[name].classList.add('active');
@@ -156,8 +216,34 @@ function roomDisplay(name,date){
 function niceDate(d,opts={weekday:'long',month:'long',day:'numeric'}){return new Intl.DateTimeFormat('en-US',opts).format(d)}
 function isSameDay(a,b){return key(a)===key(b)}
 function getItemsFor(d){return items.filter(i=>i.date===key(d)).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'))}
-function loadItems(){try{return JSON.parse(localStorage.getItem('schoolFlowItems')||'[]')}catch{return[]}}
-function persist(){localStorage.setItem('schoolFlowItems',JSON.stringify(items))}
+function loadItems(){
+  try{
+    const primary=localStorage.getItem('schoolFlowItems');
+    if(primary) return JSON.parse(primary);
+    const backup=localStorage.getItem('schoolFlowItemsBackup');
+    return backup?JSON.parse(backup):[];
+  }catch{
+    try{return JSON.parse(localStorage.getItem('schoolFlowItemsBackup')||'[]')}catch{return[]}
+  }
+}
+function persist(){
+  const payload=JSON.stringify(items);
+  localStorage.setItem('schoolFlowItems',payload);
+  localStorage.setItem('schoolFlowItemsBackup',payload);
+  localStorage.setItem('schoolFlowLastSaved',new Date().toISOString());
+}
+function loadColleges(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('schoolFlowColleges')||'null');
+    if(Array.isArray(saved)&&saved.length) return saved;
+  }catch{}
+  const initial=seededColleges.map((c,i)=>({...c,id:'college-'+i,status:'Not started',deadline:'',notes:''}));
+  localStorage.setItem('schoolFlowColleges',JSON.stringify(initial));
+  return initial;
+}
+function persistColleges(){localStorage.setItem('schoolFlowColleges',JSON.stringify(colleges))}
+function loadCollegeComparisons(){try{return JSON.parse(localStorage.getItem('schoolFlowCollegeComparisons')||'[]')}catch{return[]}}
+function persistCollegeComparisons(){localStorage.setItem('schoolFlowCollegeComparisons',JSON.stringify(collegeComparisons))}
 function loadClassNotes(){try{return JSON.parse(localStorage.getItem('schoolFlowClassNotes')||'{}')}catch{return{}}}
 function persistClassNotes(){localStorage.setItem('schoolFlowClassNotes',JSON.stringify(classNotes))}
 function openClassNotes(course,date=selectedDate){
@@ -502,7 +588,91 @@ function renderSchedule(){
   </div>`;
 }
 
-function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule()}
+function gradeFit(low,high){
+  const g=transcriptProfile.cumulativeGPA;
+  if(!Number.isFinite(low)||!Number.isFinite(high)) return {label:'Add GPA range',cls:'neutral'};
+  if(g<low) return {label:'Below range',cls:'below'};
+  if(g>high) return {label:'Above range',cls:'above'};
+  return {label:'Within range',cls:'within'};
+}
+function renderCollegeApps(){
+  const completed=colleges.filter(c=>c.status==='Submitted').length;
+  views.college.innerHTML=`
+    <section class="college-hero">
+      <div>
+        <div class="eyebrow">COLLEGE APPS</div>
+        <h1>Application HQ</h1>
+        <p>Keep your list, deadlines, status, notes, and grade comparisons in one place.</p>
+      </div>
+      <div class="college-hero-stat"><strong>${completed}/${colleges.length}</strong><span>submitted</span></div>
+    </section>
+
+    <div class="college-summary-grid">
+      <section class="card transcript-card">
+        <div class="eyebrow">TRANSCRIPT SNAPSHOT</div>
+        <div class="gpa-big">${transcriptProfile.cumulativeGPA.toFixed(4)}</div>
+        <div class="muted">Weighted cumulative GPA · ${transcriptProfile.creditsEarned} credits earned</div>
+        <div class="gpa-years">${transcriptProfile.yearly.map(y=>`<div><span>Grade ${y.grade}</span><strong>${y.gpa.toFixed(4)}</strong><small>${y.year}</small></div>`).join('')}</div>
+        <details class="transcript-details"><summary>Academic highlights</summary><div class="highlight-list">${transcriptProfile.highlights.map(x=>`<span>${x}</span>`).join('')}</div></details>
+      </section>
+
+      <section class="card fit-card">
+        <div class="eyebrow">GRADE FIT EXPLORER</div>
+        <h2>Compare your GPA</h2>
+        <p class="muted">Add a school's published or reported weighted GPA range. School weighting methods vary, so this is a rough academic comparison, not an admission prediction.</p>
+        <form id="fitForm" class="fit-form">
+          <input id="fitSchool" placeholder="School name" required>
+          <input id="fitLow" type="number" step="0.01" min="0" max="6.5" placeholder="Low GPA" required>
+          <input id="fitHigh" type="number" step="0.01" min="0" max="6.5" placeholder="High GPA" required>
+          <button class="primary-btn" type="submit">Add comparison</button>
+        </form>
+        <div class="fit-results">${collegeComparisons.length?collegeComparisons.map(c=>{const f=gradeFit(Number(c.low),Number(c.high));return `<div class="fit-row"><div><strong>${esc(c.name)}</strong><span>${Number(c.low).toFixed(2)}–${Number(c.high).toFixed(2)}</span></div><div class="fit-badge ${f.cls}">${f.label}</div><button class="fit-remove" data-id="${c.id}">×</button></div>`}).join(''):'<div class="empty compact-empty">No GPA comparisons yet.</div>'}</div>
+      </section>
+    </div>
+
+    <section class="card college-list-card">
+      <div class="college-list-head">
+        <div><div class="eyebrow">YOUR LIST</div><h2>${colleges.length} colleges</h2></div>
+        <div class="college-legend">Your imported labels are shown as-is.</div>
+      </div>
+      <div class="college-grid">${colleges.map(c=>`
+        <article class="college-card">
+          <div class="college-card-top">
+            <div><h3>${esc(c.name)}</h3><p>${esc(c.location)}</p></div>
+            <span class="probability-badge ${String(c.label).toLowerCase().replace(/[^a-z]+/g,'-')}">${esc(c.label)}</span>
+          </div>
+          <div class="app-tags">${c.apps.map(a=>`<span>${esc(a)}</span>`).join('')}</div>
+          <div class="college-fields">
+            <label>Status<select class="college-status" data-id="${c.id}"><option ${c.status==='Not started'?'selected':''}>Not started</option><option ${c.status==='In progress'?'selected':''}>In progress</option><option ${c.status==='Ready'?'selected':''}>Ready</option><option ${c.status==='Submitted'?'selected':''}>Submitted</option></select></label>
+            <label>Deadline<input class="college-deadline" data-id="${c.id}" type="date" value="${c.deadline||''}"></label>
+          </div>
+          <label class="college-notes-label">Notes<textarea class="college-notes" data-id="${c.id}" rows="3" placeholder="Essay progress, visit notes, portal info...">${esc(c.notes||'')}</textarea></label>
+        </article>
+      `).join('')}</div>
+    </section>`;
+
+  document.querySelectorAll('.college-status').forEach(el=>el.onchange=()=>updateCollege(el.dataset.id,{status:el.value}));
+  document.querySelectorAll('.college-deadline').forEach(el=>el.onchange=()=>updateCollege(el.dataset.id,{deadline:el.value}));
+  document.querySelectorAll('.college-notes').forEach(el=>el.onchange=()=>updateCollege(el.dataset.id,{notes:el.value}));
+  document.querySelector('#fitForm')?.addEventListener('submit',e=>{
+    e.preventDefault();
+    const name=document.querySelector('#fitSchool').value.trim();
+    const low=Number(document.querySelector('#fitLow').value), high=Number(document.querySelector('#fitHigh').value);
+    if(!name||!Number.isFinite(low)||!Number.isFinite(high)||low>high)return;
+    collegeComparisons.push({id:'fit-'+Date.now(),name,low,high});
+    persistCollegeComparisons();
+    renderCollegeApps();
+  });
+  document.querySelectorAll('.fit-remove').forEach(btn=>btn.onclick=()=>{collegeComparisons=collegeComparisons.filter(x=>x.id!==btn.dataset.id);persistCollegeComparisons();renderCollegeApps()});
+}
+function updateCollege(id,changes){
+  const c=colleges.find(x=>x.id===id);
+  if(!c)return;
+  Object.assign(c,changes);
+  persistColleges();
+  if(changes.status) renderCollegeApps();
+}
+function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule();renderCollegeApps()}
 renderAll();
 setInterval(()=>renderLiveStatus(),1000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
