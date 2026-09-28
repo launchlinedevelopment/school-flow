@@ -58,3 +58,15 @@ button,input,select,textarea{font:inherit}.ambient{position:fixed;filter:blur(70
   .agenda-plan-chip{justify-self:start}
   .agenda-plan-meta{white-space:normal}
 }
+
+.task-row{grid-template-columns:26px minmax(0,1fr) auto}
+.task-actions{display:flex;align-items:center;gap:4px}
+.edit-task-btn,.edit-event-btn{border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.05);color:#aebbd9;border-radius:8px;cursor:pointer;font-weight:800}
+.edit-task-btn{width:28px;height:28px}
+.edit-event-btn{padding:6px 8px;font-size:10px}
+.edit-task-btn:hover,.edit-event-btn:hover{color:white;border-color:rgba(124,92,255,.45);background:rgba(124,92,255,.12)}
+.agenda-plan-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.agenda-plan.college{border-color:rgba(197,142,255,.34);background:linear-gradient(100deg,rgba(173,112,255,.13),rgba(37,208,255,.06))}
+.agenda-plan.college .agenda-plan-chip{background:rgba(173,112,255,.16);color:#e0c4ff}
+.college-mini{border-left-color:#bd83ff;background:rgba(173,112,255,.10)}
+@media(max-width:620px){.agenda-plan-actions{grid-column:2;justify-content:flex-start}}
