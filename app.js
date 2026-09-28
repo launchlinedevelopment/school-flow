@@ -102,6 +102,27 @@ const seededColleges = [
   {name:'Hofstra University',location:'Hempstead, New York',label:'No probability indicated',apps:['Common App']}
 ];
 
+const bbyoWeeklyTemplate = [
+  {id:'cp-josh',group:'Counterparts',label:'Josh Matthews — East Brunswick AZA'},
+  {id:'cp-charlie',group:'Counterparts',label:'Charlie Mason — Marlboro AZA (Home Chapter)'},
+  {id:'cp-ryan',group:'Counterparts',label:"Ryan Feldman — T'sahal BBYO"},
+  {id:'cp-jordan',group:'Counterparts',label:'Jordan Feldman — Chavi BBYO (Focus Chapter)'},
+  {id:'focus-chavi',group:'Focus Chapters',label:'Chavi BBYO',detail:'Point of Contact: Madelyn Paradise'},
+  {id:'focus-marlboro',group:'Focus Chapters',label:'Marlboro AZA',detail:'Point of Contact: Seth Borenstein'},
+  {id:'yacht',group:'Planning',label:'Check in on Yacht Party planning + sign-ups',until:'2026-10-17'}
+];
+
+const bbyoDailyTemplate = [
+  {id:'fallcon',label:'Check in on FallCon Steering + signups',until:'2026-11-20'}
+];
+
+const seededBbyoMeetings = [
+  {id:'bbyo-max-1on1',title:'1:1 w/ Max Nachman',mode:'Online',startDate:'2026-09-28',startTime:'17:00',endTime:'',recurrence:'biweekly',url:'',location:''},
+  {id:'bbyo-sganim',title:"S'ganim Call w/ Max Nachman",mode:'Online',startDate:'2026-09-29',startTime:'17:00',endTime:'18:00',recurrence:'weekly',url:'',location:''},
+  {id:'bbyo-thursday',title:'Thursday BBYO Meeting',mode:'Online',startDate:'2026-10-01',startTime:'18:30',endTime:'19:30',recurrence:'weekly',url:'',location:''},
+  {id:'bbyo-fallcon-1',title:'FallCon Steering Meeting #1',mode:'Online',startDate:'2026-09-28',startTime:'18:00',endTime:'19:30',recurrence:'none',url:'',location:''}
+];
+
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -111,13 +132,16 @@ let activeNotesCourse = null;
 let editingItemId = null;
 let colleges = loadColleges();
 let collegeComparisons = loadCollegeComparisons();
+let bbyoMeetings = loadBbyoMeetings();
+let bbyoChecks = loadBbyoChecks();
 
 const views = {
   today:document.querySelector('#todayView'),
   week:document.querySelector('#weekView'),
   calendar:document.querySelector('#calendarView'),
   schedule:document.querySelector('#scheduleView'),
-  college:document.querySelector('#collegeView')
+  college:document.querySelector('#collegeView'),
+  bbyo:document.querySelector('#bbyoView')
 };
 const dialog = document.querySelector('#itemDialog');
 const form = document.querySelector('#itemForm');
@@ -149,7 +173,7 @@ document.querySelector('#exportDataBtn')?.addEventListener('click',exportAllData
 document.querySelector('#importDataInput')?.addEventListener('change',importAllData);
 
 function exportAllData(){
-  const data={version:1,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons};
+  const data={version:2,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons,bbyoMeetings,bbyoChecks};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -169,7 +193,9 @@ function importAllData(event){
       if(data.classNotes&&typeof data.classNotes==='object') classNotes=data.classNotes;
       if(Array.isArray(data.colleges)) colleges=data.colleges;
       if(Array.isArray(data.collegeComparisons)) collegeComparisons=data.collegeComparisons;
-      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons();
+      if(Array.isArray(data.bbyoMeetings)) bbyoMeetings=data.bbyoMeetings;
+      if(data.bbyoChecks&&typeof data.bbyoChecks==='object') bbyoChecks=data.bbyoChecks;
+      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons(); persistBbyoMeetings(); persistBbyoChecks();
       renderAll();
       alert('Backup imported successfully.');
     }catch{alert('That backup file could not be read.')}
@@ -244,6 +270,40 @@ function loadColleges(){
 function persistColleges(){localStorage.setItem('schoolFlowColleges',JSON.stringify(colleges))}
 function loadCollegeComparisons(){try{return JSON.parse(localStorage.getItem('schoolFlowCollegeComparisons')||'[]')}catch{return[]}}
 function persistCollegeComparisons(){localStorage.setItem('schoolFlowCollegeComparisons',JSON.stringify(collegeComparisons))}
+function loadBbyoMeetings(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('schoolFlowBbyoMeetings')||'null');
+    if(Array.isArray(saved)&&saved.length)return saved;
+  }catch{}
+  localStorage.setItem('schoolFlowBbyoMeetings',JSON.stringify(seededBbyoMeetings));
+  return seededBbyoMeetings.map(x=>({...x}));
+}
+function persistBbyoMeetings(){localStorage.setItem('schoolFlowBbyoMeetings',JSON.stringify(bbyoMeetings))}
+function loadBbyoChecks(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoChecks')||'{}')}catch{return{}}}
+function persistBbyoChecks(){localStorage.setItem('schoolFlowBbyoChecks',JSON.stringify(bbyoChecks))}
+function mondayKey(date=new Date()){
+  const d=startOfDay(date), offset=(d.getDay()+6)%7;
+  return key(addDays(d,-offset));
+}
+function isCheckDone(id,scope='weekly'){
+  const bucket=scope==='daily'?key(new Date()):mondayKey(new Date());
+  return !!bbyoChecks[bucket]?.[id];
+}
+function setCheckDone(id,done,scope='weekly'){
+  const bucket=scope==='daily'?key(new Date()):mondayKey(new Date());
+  if(!bbyoChecks[bucket])bbyoChecks[bucket]={};
+  bbyoChecks[bucket][id]=done;
+  persistBbyoChecks();
+}
+function meetingOccursOn(meeting,date){
+  const start=new Date(meeting.startDate+'T12:00:00'), target=startOfDay(date);
+  if(target<start)return false;
+  const diff=Math.round((target-start)/86400000);
+  if(meeting.recurrence==='none')return diff===0;
+  if(meeting.recurrence==='weekly')return diff%7===0;
+  if(meeting.recurrence==='biweekly')return diff%14===0;
+  return false;
+}
 function loadClassNotes(){try{return JSON.parse(localStorage.getItem('schoolFlowClassNotes')||'{}')}catch{return{}}}
 function persistClassNotes(){localStorage.setItem('schoolFlowClassNotes',JSON.stringify(classNotes))}
 function openClassNotes(course,date=selectedDate){
@@ -672,7 +732,63 @@ function updateCollege(id,changes){
   persistColleges();
   if(changes.status) renderCollegeApps();
 }
-function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule();renderCollegeApps()}
+function nextMeetingOccurrences(days=28){
+  const out=[], today=startOfDay(new Date());
+  for(let i=0;i<days;i++){
+    const d=addDays(today,i);
+    bbyoMeetings.forEach(m=>{if(meetingOccursOn(m,d))out.push({meeting:m,date:d})});
+  }
+  return out.sort((a,b)=>key(a.date).localeCompare(key(b.date))||a.meeting.startTime.localeCompare(b.meeting.startTime));
+}
+function renderBbyo(){
+  const todayKey=key(new Date());
+  const weekly=bbyoWeeklyTemplate.filter(x=>!x.until||todayKey<=x.until);
+  const daily=bbyoDailyTemplate.filter(x=>!x.until||todayKey<=x.until);
+  const upcoming=nextMeetingOccurrences();
+  const weeklyDone=weekly.filter(x=>isCheckDone(x.id,'weekly')).length;
+  views.bbyo.innerHTML=`
+    <section class="bbyo-hero">
+      <div><div class="eyebrow">BBYO</div><h1>S'gan Dashboard</h1><p>Counterparts, focus chapters, steering, and your meetings.</p></div>
+      <div class="bbyo-score"><strong>${weeklyDone}/${weekly.length}</strong><span>weekly done</span></div>
+    </section>
+    <div class="bbyo-grid">
+      <section class="card">
+        <div class="card-head"><div><div class="eyebrow">WEEKLY CHECKLIST</div><h2>Week of ${niceDate(new Date(mondayKey(new Date())+'T12:00:00'),{month:'short',day:'numeric'})}</h2></div></div>
+        <div class="bbyo-check-groups">
+          ${['Counterparts','Focus Chapters','Planning'].map(group=>{const rows=weekly.filter(x=>x.group===group);return rows.length?`<div class="bbyo-check-group"><div class="bbyo-group-title">${group}</div>${rows.map(x=>`<label class="bbyo-check-row ${isCheckDone(x.id,'weekly')?'done':''}"><input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="weekly" ${isCheckDone(x.id,'weekly')?'checked':''}><span><strong>${esc(x.label)}</strong>${x.detail?`<small>${esc(x.detail)}</small>`:''}${x.until?`<small>Until ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small>`:''}</span></label>`).join('')}</div>`:''}).join('')}
+          ${daily.length?`<div class="bbyo-check-group daily-group"><div class="bbyo-group-title">Daily</div>${daily.map(x=>`<label class="bbyo-check-row ${isCheckDone(x.id,'daily')?'done':''}"><input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="daily" ${isCheckDone(x.id,'daily')?'checked':''}><span><strong>${esc(x.label)}</strong><small>Daily · Until ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small></span></label>`).join('')}</div>`:''}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head"><div><div class="eyebrow">UPCOMING</div><h2>Meetings</h2></div><span class="muted">Next 4 weeks</span></div>
+        <div class="meeting-list">${upcoming.slice(0,12).map(({meeting:m,date:d})=>`<div class="meeting-row"><div class="meeting-date"><strong>${niceDate(d,{weekday:'short'})}</strong><span>${niceDate(d,{month:'short',day:'numeric'})}</span></div><div class="meeting-main"><strong>${esc(m.title)}</strong><span>${formatTime(m.startTime)}${m.endTime?'–'+formatTime(m.endTime):''} · ${esc(m.mode)}</span>${m.location?`<small>${esc(m.location)}</small>`:''}${!m.url&&m.mode==='Online'?'<small>Add your private meeting link below</small>':''}</div><div class="meeting-actions">${m.url?`<a class="join-btn" href="${esc(m.url)}" target="_blank" rel="noopener">Join</a>`:''}<button class="meeting-delete" data-id="${m.id}">×</button></div></div>`).join('')}</div>
+      </section>
+    </div>
+    <section class="card add-meeting-card">
+      <div class="card-head"><div><div class="eyebrow">ADD MEETING</div><h2>In-person or online</h2></div></div>
+      <form id="bbyoMeetingForm" class="meeting-form">
+        <input id="bbyoMeetingTitle" placeholder="Meeting name" required>
+        <select id="bbyoMeetingMode"><option>Online</option><option>In-Person</option></select>
+        <input id="bbyoMeetingDate" type="date" required>
+        <input id="bbyoMeetingStart" type="time" required>
+        <input id="bbyoMeetingEnd" type="time">
+        <select id="bbyoMeetingRecurrence"><option value="none">Does not repeat</option><option value="weekly">Weekly</option><option value="biweekly">Every other week</option></select>
+        <input id="bbyoMeetingUrl" type="url" placeholder="Private Zoom / meeting link">
+        <input id="bbyoMeetingLocation" placeholder="Location (for in-person)">
+        <button class="primary-btn" type="submit">Add meeting</button>
+      </form>
+    </section>`;
+  document.querySelectorAll('.bbyo-check').forEach(cb=>cb.onchange=()=>{setCheckDone(cb.dataset.id,cb.checked,cb.dataset.scope);renderBbyo()});
+  document.querySelectorAll('.meeting-delete').forEach(btn=>btn.onclick=()=>{bbyoMeetings=bbyoMeetings.filter(x=>x.id!==btn.dataset.id);persistBbyoMeetings();renderBbyo()});
+  document.querySelector('#bbyoMeetingForm')?.addEventListener('submit',e=>{
+    e.preventDefault();
+    const title=document.querySelector('#bbyoMeetingTitle').value.trim(), startDate=document.querySelector('#bbyoMeetingDate').value, startTime=document.querySelector('#bbyoMeetingStart').value;
+    if(!title||!startDate||!startTime)return;
+    bbyoMeetings.push({id:'bbyo-'+Date.now(),title,mode:document.querySelector('#bbyoMeetingMode').value,startDate,startTime,endTime:document.querySelector('#bbyoMeetingEnd').value,recurrence:document.querySelector('#bbyoMeetingRecurrence').value,url:document.querySelector('#bbyoMeetingUrl').value.trim(),location:document.querySelector('#bbyoMeetingLocation').value.trim()});
+    persistBbyoMeetings(); renderBbyo();
+  });
+}
+function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule();renderCollegeApps();renderBbyo()}
 renderAll();
 setInterval(()=>renderLiveStatus(),1000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
