@@ -753,43 +753,177 @@ function nextMeetingOccurrences(days=28){
   return out.sort((a,b)=>key(a.date).localeCompare(key(b.date))||a.meeting.startTime.localeCompare(b.meeting.startTime));
 }
 function renderBbyo(){
-  const todayKey=key(new Date());
+  const today=new Date(), todayKey=key(today);
   const weekly=bbyoWeeklyTemplate.filter(x=>!x.until||todayKey<=x.until);
   const daily=bbyoDailyTemplate.filter(x=>!x.until||todayKey<=x.until);
   const upcoming=nextMeetingOccurrences();
   const weeklyDone=weekly.filter(x=>isCheckDone(x.id,'weekly')).length;
+  const dailyDone=daily.filter(x=>isCheckDone(x.id,'daily')).length;
+  const totalActive=weekly.length+daily.length;
+  const totalDone=weeklyDone+dailyDone;
+  const progress=totalActive?Math.round((totalDone/totalActive)*100):100;
+  const next=upcoming[0];
+  const counterpartDone=weekly.filter(x=>x.group==='Counterparts'&&isCheckDone(x.id,'weekly')).length;
+  const counterpartTotal=weekly.filter(x=>x.group==='Counterparts').length;
+  const focusDone=weekly.filter(x=>x.group==='Focus Chapters'&&isCheckDone(x.id,'weekly')).length;
+  const focusTotal=weekly.filter(x=>x.group==='Focus Chapters').length;
+
   views.bbyo.innerHTML=`
-    <section class="bbyo-hero">
-      <div><div class="eyebrow">BBYO</div><h1>S'gan Dashboard</h1><p>Counterparts, focus chapters, steering, and your meetings.</p></div>
-      <div class="bbyo-score"><strong>${weeklyDone}/${weekly.length}</strong><span>weekly done</span></div>
+    <section class="bbyo-command-hero">
+      <div class="bbyo-command-copy">
+        <div class="bbyo-kicker"><span class="bbyo-live-dot"></span> GREATER JERSEY REGION · S'GAN</div>
+        <h1>Lead the week.<br><span>Stay ahead.</span></h1>
+        <p>One place for counterparts, focus chapters, steering, calls, and everything you need to keep moving.</p>
+        <div class="bbyo-hero-pills">
+          <span>Week of ${niceDate(new Date(mondayKey(today)+'T12:00:00'),{month:'short',day:'numeric'})}</span>
+          <span>${upcoming.length} upcoming meetings</span>
+          <span>${progress}% complete</span>
+        </div>
+      </div>
+      <div class="bbyo-progress-orb" style="--progress:${progress*3.6}deg">
+        <div class="bbyo-progress-inner"><strong>${progress}%</strong><span>week locked in</span></div>
+      </div>
     </section>
-    <div class="bbyo-grid">
-      <section class="card">
-        <div class="card-head"><div><div class="eyebrow">WEEKLY CHECKLIST</div><h2>Week of ${niceDate(new Date(mondayKey(new Date())+'T12:00:00'),{month:'short',day:'numeric'})}</h2></div></div>
+
+    <section class="bbyo-stats-row">
+      <article class="bbyo-stat-card">
+        <div class="bbyo-stat-icon">↗</div>
+        <div><span>Counterparts</span><strong>${counterpartDone}/${counterpartTotal}</strong><small>checked in</small></div>
+      </article>
+      <article class="bbyo-stat-card">
+        <div class="bbyo-stat-icon">◎</div>
+        <div><span>Focus Chapters</span><strong>${focusDone}/${focusTotal}</strong><small>touched base</small></div>
+      </article>
+      <article class="bbyo-stat-card accent-card">
+        <div class="bbyo-stat-icon">⚡</div>
+        <div><span>Daily Priority</span><strong>${dailyDone}/${daily.length}</strong><small>FallCon steering</small></div>
+      </article>
+      <article class="bbyo-stat-card">
+        <div class="bbyo-stat-icon">◷</div>
+        <div><span>Next Meeting</span><strong>${next?formatTime(next.meeting.startTime):'—'}</strong><small>${next?esc(next.meeting.title):'Nothing upcoming'}</small></div>
+      </article>
+    </section>
+
+    ${next?`<section class="bbyo-next-meeting">
+      <div class="next-meeting-date">
+        <span>${niceDate(next.date,{weekday:'short'}).toUpperCase()}</span>
+        <strong>${next.date.getDate()}</strong>
+        <small>${niceDate(next.date,{month:'short'}).toUpperCase()}</small>
+      </div>
+      <div class="next-meeting-main">
+        <div class="bbyo-kicker">UP NEXT</div>
+        <h2>${esc(next.meeting.title)}</h2>
+        <p>${formatTime(next.meeting.startTime)}${next.meeting.endTime?' – '+formatTime(next.meeting.endTime):''} · ${esc(next.meeting.mode)}${next.meeting.location?' · '+esc(next.meeting.location):''}</p>
+      </div>
+      <div class="next-meeting-actions">
+        ${next.meeting.url?`<a class="bbyo-join-main" href="${esc(next.meeting.url)}" target="_blank" rel="noopener">Join Meeting <span>↗</span></a>`:''}
+      </div>
+    </section>`:''}
+
+    <div class="bbyo-main-grid">
+      <section class="bbyo-panel bbyo-checklist-panel">
+        <div class="bbyo-panel-head">
+          <div>
+            <div class="bbyo-kicker">MISSION CONTROL</div>
+            <h2>This Week</h2>
+          </div>
+          <div class="bbyo-mini-progress"><span style="width:${progress}%"></span></div>
+        </div>
+
         <div class="bbyo-check-groups">
-          ${['Counterparts','Focus Chapters','Planning'].map(group=>{const rows=weekly.filter(x=>x.group===group);return rows.length?`<div class="bbyo-check-group"><div class="bbyo-group-title">${group}</div>${rows.map(x=>`<label class="bbyo-check-row ${isCheckDone(x.id,'weekly')?'done':''}"><input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="weekly" ${isCheckDone(x.id,'weekly')?'checked':''}><span><strong>${esc(x.label)}</strong>${x.detail?`<small>${esc(x.detail)}</small>`:''}${x.until?`<small>Until ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small>`:''}</span></label>`).join('')}</div>`:''}).join('')}
-          ${daily.length?`<div class="bbyo-check-group daily-group"><div class="bbyo-group-title">Daily</div>${daily.map(x=>`<label class="bbyo-check-row ${isCheckDone(x.id,'daily')?'done':''}"><input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="daily" ${isCheckDone(x.id,'daily')?'checked':''}><span><strong>${esc(x.label)}</strong><small>Daily · Until ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small></span></label>`).join('')}</div>`:''}
+          ${['Counterparts','Focus Chapters','Planning'].map(group=>{
+            const rows=weekly.filter(x=>x.group===group);
+            if(!rows.length)return '';
+            const done=rows.filter(x=>isCheckDone(x.id,'weekly')).length;
+            return `<div class="bbyo-check-group premium-group">
+              <div class="bbyo-group-head"><div><span class="bbyo-group-dot"></span>${group}</div><span>${done}/${rows.length}</span></div>
+              ${rows.map(x=>`<label class="bbyo-check-row premium-check ${isCheckDone(x.id,'weekly')?'done':''}">
+                <input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="weekly" ${isCheckDone(x.id,'weekly')?'checked':''}>
+                <span class="custom-check"></span>
+                <span class="check-copy"><strong>${esc(x.label)}</strong>${x.detail?`<small>${esc(x.detail)}</small>`:''}${x.until?`<small class="deadline-small">Through ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small>`:''}</span>
+              </label>`).join('')}
+            </div>`;
+          }).join('')}
+          ${daily.length?`<div class="bbyo-check-group premium-group priority-group">
+            <div class="bbyo-group-head"><div><span class="bbyo-group-dot priority-dot"></span>Daily Priority</div><span>${dailyDone}/${daily.length}</span></div>
+            ${daily.map(x=>`<label class="bbyo-check-row premium-check ${isCheckDone(x.id,'daily')?'done':''}">
+              <input type="checkbox" class="bbyo-check" data-id="${x.id}" data-scope="daily" ${isCheckDone(x.id,'daily')?'checked':''}>
+              <span class="custom-check"></span>
+              <span class="check-copy"><strong>${esc(x.label)}</strong><small>Do this every day · through ${niceDate(new Date(x.until+'T12:00:00'),{month:'short',day:'numeric'})}</small></span>
+            </label>`).join('')}
+          </div>`:''}
         </div>
       </section>
-      <section class="card">
-        <div class="card-head"><div><div class="eyebrow">UPCOMING</div><h2>Meetings</h2></div><span class="muted">Next 4 weeks</span></div>
-        <div class="meeting-list">${upcoming.slice(0,12).map(({meeting:m,date:d})=>`<div class="meeting-row"><div class="meeting-date"><strong>${niceDate(d,{weekday:'short'})}</strong><span>${niceDate(d,{month:'short',day:'numeric'})}</span></div><div class="meeting-main"><strong>${esc(m.title)}</strong><span>${formatTime(m.startTime)}${m.endTime?'–'+formatTime(m.endTime):''} · ${esc(m.mode)}</span>${m.location?`<small>${esc(m.location)}</small>`:''}${!m.url&&m.mode==='Online'?'<small>Add your private meeting link below</small>':''}</div><div class="meeting-actions">${m.url?`<a class="join-btn" href="${esc(m.url)}" target="_blank" rel="noopener">Join</a>`:''}<button class="meeting-delete" data-id="${m.id}">×</button></div></div>`).join('')}</div>
+
+      <section class="bbyo-panel bbyo-contact-panel">
+        <div class="bbyo-panel-head">
+          <div><div class="bbyo-kicker">FOCUS CHAPTERS</div><h2>Quick Contacts</h2></div>
+        </div>
+        <div class="bbyo-contact-grid">
+          <article class="bbyo-contact-card">
+            <div class="contact-avatar">C</div>
+            <div class="contact-info"><span>Chavi BBYO</span><strong>Madelyn Paradise</strong><a href="tel:+19088738370">+1 (908) 873-8370</a></div>
+            <a class="contact-action" href="tel:+19088738370">Call</a>
+          </article>
+          <article class="bbyo-contact-card">
+            <div class="contact-avatar">M</div>
+            <div class="contact-info"><span>Marlboro AZA</span><strong>Seth Borenstein</strong><a href="tel:+19086705051">+1 (908) 670-5051</a></div>
+            <a class="contact-action" href="tel:+19086705051">Call</a>
+          </article>
+        </div>
+
+        <div class="bbyo-counterpart-strip">
+          <div class="bbyo-kicker">COUNTERPARTS</div>
+          <div class="counterpart-chips">
+            <span>JM <b>Josh</b></span>
+            <span>CM <b>Charlie</b></span>
+            <span>RF <b>Ryan</b></span>
+            <span>JF <b>Jordan</b></span>
+          </div>
+        </div>
       </section>
     </div>
-    <section class="card add-meeting-card">
-      <div class="card-head"><div><div class="eyebrow">ADD MEETING</div><h2>In-person or online</h2></div></div>
-      <form id="bbyoMeetingForm" class="meeting-form">
-        <input id="bbyoMeetingTitle" placeholder="Meeting name" required>
-        <select id="bbyoMeetingMode"><option>Online</option><option>In-Person</option></select>
-        <input id="bbyoMeetingDate" type="date" required>
-        <input id="bbyoMeetingStart" type="time" required>
-        <input id="bbyoMeetingEnd" type="time">
-        <select id="bbyoMeetingRecurrence"><option value="none">Does not repeat</option><option value="weekly">Weekly</option><option value="biweekly">Every other week</option></select>
-        <input id="bbyoMeetingUrl" type="url" placeholder="Private Zoom / meeting link">
-        <input id="bbyoMeetingLocation" placeholder="Location (for in-person)">
-        <button class="primary-btn" type="submit">Add meeting</button>
+
+    <section class="bbyo-panel bbyo-meeting-panel">
+      <div class="bbyo-panel-head meeting-panel-head">
+        <div><div class="bbyo-kicker">CALENDAR</div><h2>Upcoming Meetings</h2></div>
+        <span class="muted">Next 4 weeks</span>
+      </div>
+      <div class="meeting-timeline">
+        ${upcoming.length?upcoming.slice(0,12).map(({meeting:m,date:d},idx)=>`
+          <div class="meeting-timeline-row ${idx===0?'next':''}">
+            <div class="timeline-line"><span></span></div>
+            <div class="meeting-date premium-date"><strong>${niceDate(d,{weekday:'short'})}</strong><span>${niceDate(d,{month:'short',day:'numeric'})}</span></div>
+            <div class="meeting-main premium-meeting-main">
+              <strong>${esc(m.title)}</strong>
+              <span>${formatTime(m.startTime)}${m.endTime?' – '+formatTime(m.endTime):''}</span>
+              <small>${esc(m.mode)}${m.location?' · '+esc(m.location):''}${m.recurrence!=='none'?' · '+(m.recurrence==='weekly'?'Weekly':'Every other week'):''}</small>
+            </div>
+            <div class="meeting-actions premium-actions">
+              ${m.url?`<a class="join-btn premium-join" href="${esc(m.url)}" target="_blank" rel="noopener">Join ↗</a>`:''}
+              <button class="meeting-delete" data-id="${m.id}" title="Delete meeting">×</button>
+            </div>
+          </div>`).join(''):'<div class="empty compact-empty">No upcoming meetings.</div>'}
+      </div>
+    </section>
+
+    <section class="bbyo-panel add-meeting-card premium-add-card">
+      <div class="bbyo-panel-head">
+        <div><div class="bbyo-kicker">NEW EVENT</div><h2>Add a Meeting</h2><p>Online, in-person, one-time, or recurring.</p></div>
+      </div>
+      <form id="bbyoMeetingForm" class="meeting-form premium-form">
+        <label><span>Meeting name</span><input id="bbyoMeetingTitle" placeholder="e.g. Chapter visit" required></label>
+        <label><span>Type</span><select id="bbyoMeetingMode"><option>Online</option><option>In-Person</option></select></label>
+        <label><span>Date</span><input id="bbyoMeetingDate" type="date" required></label>
+        <label><span>Starts</span><input id="bbyoMeetingStart" type="time" required></label>
+        <label><span>Ends</span><input id="bbyoMeetingEnd" type="time"></label>
+        <label><span>Repeats</span><select id="bbyoMeetingRecurrence"><option value="none">Does not repeat</option><option value="weekly">Weekly</option><option value="biweekly">Every other week</option></select></label>
+        <label class="wide-field"><span>Meeting link</span><input id="bbyoMeetingUrl" type="url" placeholder="https://..."></label>
+        <label class="wide-field"><span>Location</span><input id="bbyoMeetingLocation" placeholder="For in-person meetings"></label>
+        <button class="bbyo-add-meeting-btn" type="submit">Add to BBYO Calendar <span>＋</span></button>
       </form>
     </section>`;
+
   document.querySelectorAll('.bbyo-check').forEach(cb=>cb.onchange=()=>{setCheckDone(cb.dataset.id,cb.checked,cb.dataset.scope);renderBbyo()});
   document.querySelectorAll('.meeting-delete').forEach(btn=>btn.onclick=()=>{bbyoMeetings=bbyoMeetings.filter(x=>x.id!==btn.dataset.id);persistBbyoMeetings();renderBbyo()});
   document.querySelector('#bbyoMeetingForm')?.addEventListener('submit',e=>{
