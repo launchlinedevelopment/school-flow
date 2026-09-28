@@ -59,8 +59,8 @@
     <form method="dialog" id="itemForm">
       <div class="dialog-head">
         <div>
-          <div class="eyebrow">NEW PLAN</div>
-          <h2>Add something to your day</h2>
+          <div class="eyebrow" id="itemDialogEyebrow">NEW PLAN</div>
+          <h2 id="itemDialogTitle">Add something to your day</h2>
         </div>
         <button value="cancel" class="icon-btn" aria-label="Close">×</button>
       </div>
@@ -68,7 +68,7 @@
         <label class="full">Title<input id="itemTitle" required placeholder="Study for anatomy quiz" /></label>
         <label>Date<input id="itemDate" type="date" required /></label>
         <label>Time<input id="itemTime" type="time" /></label>
-        <label>Type<select id="itemType"><option>Homework</option><option>Test / Quiz</option><option>School</option><option>Activity</option><option>Personal</option></select></label>
+        <label>Type<select id="itemType"><option>Homework</option><option>Test / Quiz</option><option>School</option><option>College</option><option>Activity</option><option>Personal</option></select></label>
         <label>Priority<select id="itemPriority"><option>Normal</option><option>High</option><option>Low</option></select></label>
         <label class="full">Class<select id="itemClass"><option value="">No class</option></select></label>
         <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Anything you want to remember..."></textarea></label>
