@@ -195,7 +195,12 @@ create policy "own insert check completions" on check_completions for insert to 
 create policy "own delete check completions" on check_completions for delete to authenticated using (profile_id=auth.uid());
 
 create policy "read meetings" on meetings for select to authenticated
-using (visible_regionwide or public.current_profile_role()='admin' or council_id=public.current_council_id() or owner_profile_id=auth.uid());
+using (
+  (visible_regionwide and public.current_profile_role() in ('admin','council_sgan'))
+  or public.current_profile_role()='admin'
+  or council_id=public.current_council_id()
+  or owner_profile_id=auth.uid()
+);
 create policy "leaders manage meetings" on meetings for all to authenticated
 using (
   public.current_profile_role()='admin'
@@ -243,13 +248,17 @@ cross join (values
 where c.name='CCAZA'
 and not exists(select 1 from counterparts x where x.council_id=c.id and x.name=v.name);
 
--- Seed recurring leadership checks.
+-- Seed recurring leadership checks with the original CCAZA S'gan Hub details.
 insert into check_templates(council_id,title,group_name,cadence,until_date)
 select c.id,v.title,v.group_name,v.cadence,v.until_date
 from councils c
 cross join (values
- ('Check in with Counterparts','Counterparts','weekly',null::date),
- ('Check in with Focus Chapters','Focus Chapters','weekly',null::date),
+ ('Josh Matthews — East Brunswick AZA','Counterparts','weekly',null::date),
+ ('Charlie Mason — Marlboro AZA (Home Chapter)','Counterparts','weekly',null::date),
+ ('Ryan Feldman — T''sahal BBYO','Counterparts','weekly',null::date),
+ ('Jordan Feldman — Chavi BBYO (Focus Chapter)','Counterparts','weekly',null::date),
+ ('Chavi BBYO — POC Madelyn Paradise · +1 (908) 873-8370','Focus Chapters','weekly',null::date),
+ ('Marlboro AZA — POC Seth Borenstein · +1 (908) 670-5051','Focus Chapters','weekly',null::date),
  ('Check in on Yacht Party planning + sign-ups','Planning','weekly','2026-10-17'::date),
  ('Check in on FallCon Steering + signups','Daily Priority','daily','2026-11-20'::date)
 ) as v(title,group_name,cadence,until_date)
