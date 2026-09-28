@@ -70,3 +70,44 @@ button,input,select,textarea{font:inherit}.ambient{position:fixed;filter:blur(70
 .agenda-plan.college .agenda-plan-chip{background:rgba(173,112,255,.16);color:#e0c4ff}
 .college-mini{border-left-color:#bd83ff;background:rgba(173,112,255,.10)}
 @media(max-width:620px){.agenda-plan-actions{grid-column:2;justify-content:flex-start}}
+
+/* Cleaner layout */
+.card{box-shadow:0 14px 36px rgba(0,0,0,.24)}
+.sidebar{box-shadow:0 14px 38px rgba(0,0,0,.24)}
+.sidebar nav{gap:5px}
+.nav-item{padding:11px 12px}
+.data-card p{font-size:12px;color:var(--muted);line-height:1.45}
+.data-actions{display:grid;gap:7px;margin-top:10px}
+.mini-btn{font-size:11px;padding:8px 10px;text-align:center}
+.import-label{display:block;cursor:pointer}
+
+.college-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding:28px;border:1px solid var(--line);border-radius:28px;background:linear-gradient(120deg,rgba(124,92,255,.16),rgba(37,208,255,.06));margin-bottom:18px}
+.college-hero h1{font-size:clamp(32px,4vw,52px);margin:5px 0 8px;letter-spacing:-.04em}
+.college-hero p{margin:0;color:var(--muted)}
+.college-hero-stat{padding:14px 18px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid var(--line);text-align:right}
+.college-hero-stat strong{display:block;font-size:28px}.college-hero-stat span{font-size:11px;color:var(--muted)}
+.college-summary-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:18px;margin-bottom:18px}
+.gpa-big{font-size:50px;font-weight:950;letter-spacing:-.05em;margin-top:8px}
+.gpa-years{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.gpa-years div{padding:11px;border-radius:13px;background:rgba(255,255,255,.035)}
+.gpa-years span,.gpa-years small{display:block;color:var(--muted);font-size:10px}.gpa-years strong{display:block;font-size:18px;margin:3px 0}
+.transcript-details{margin-top:14px}.transcript-details summary{cursor:pointer;font-size:12px;font-weight:800;color:#cdd8f3}
+.highlight-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.highlight-list span{font-size:10px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.fit-card h2{margin:4px 0 6px}.fit-card p{font-size:12px;line-height:1.5}
+.fit-form{display:grid;grid-template-columns:1.4fr .7fr .7fr auto;gap:8px;margin:14px 0}
+.fit-form input{width:100%;padding:10px 11px;border-radius:11px;border:1px solid var(--line);background:#0b1120;color:white}
+.fit-results{display:grid;gap:7px}.fit-row{display:grid;grid-template-columns:1fr auto auto;gap:9px;align-items:center;padding:10px;border-radius:12px;background:rgba(255,255,255,.035)}
+.fit-row div:first-child span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.fit-badge{font-size:10px;font-weight:850;padding:5px 8px;border-radius:999px}.fit-badge.within{background:rgba(75,227,164,.12);color:#9ff1cb}.fit-badge.above{background:rgba(37,208,255,.12);color:#9ee8ff}.fit-badge.below{background:rgba(255,154,191,.12);color:#ffb6cf}.fit-badge.neutral{background:rgba(255,255,255,.06);color:var(--muted)}
+.fit-remove{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}.compact-empty{padding:14px}
+.college-list-card{padding:20px}.college-list-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:14px}.college-list-head h2{margin:4px 0 0}.college-legend{font-size:11px;color:var(--muted)}
+.college-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.college-card{padding:16px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.college-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.college-card h3{margin:0;font-size:16px}.college-card p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.probability-badge{font-size:9px;font-weight:900;padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.06);white-space:nowrap}.probability-badge.likely{color:#9ff1cb;background:rgba(75,227,164,.1)}.probability-badge.probable{color:#9ee8ff;background:rgba(37,208,255,.1)}.probability-badge.reach{color:#ffc3d8;background:rgba(255,154,191,.1)}
+.app-tags{display:flex;gap:6px;flex-wrap:wrap;margin:11px 0}.app-tags span{font-size:9px;padding:5px 7px;border-radius:999px;background:rgba(124,92,255,.1);color:#d0c8ff}
+.college-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.college-fields label,.college-notes-label{font-size:10px;color:var(--muted);font-weight:750}
+.college-fields select,.college-fields input,.college-notes{width:100%;margin-top:5px;padding:9px;border-radius:10px;border:1px solid var(--line);background:#0b1120;color:white}
+.college-notes-label{display:block;margin-top:9px}.college-notes{resize:vertical;min-height:72px}
+@media(max-width:980px){.sidebar nav{grid-template-columns:repeat(5,1fr)}.college-summary-grid{grid-template-columns:1fr}.college-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.fit-form{grid-template-columns:1fr 1fr}.fit-form input:first-child,.fit-form button{grid-column:1/-1}.college-hero{align-items:flex-start}.college-hero-stat{display:none}.gpa-years{grid-template-columns:1fr}.college-fields{grid-template-columns:1fr}}
