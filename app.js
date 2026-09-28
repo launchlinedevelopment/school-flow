@@ -170,6 +170,88 @@ function saveItem(){
 function toggleItem(id){const i=items.find(x=>x.id===id);if(i)i.done=!i.done;persist();renderAll()}
 function deleteItem(id){items=items.filter(x=>x.id!==id);persist();renderAll()}
 
+function minutesFromTime(t){
+  const [h,m]=t.split(':').map(Number);
+  return h*60+m;
+}
+function currentSchoolStatus(now=new Date()){
+  const d=startOfDay(now), letter=getDayLetter(d);
+  if(!letter) return {kind:isWeekend(d)?'weekend':'closed',title:isWeekend(d)?'Weekend':'No school today',detail:isWeekend(d)?'No classes — use the planner for your weekend schedule.':'The A–G rotation does not advance today.'};
+
+  const mins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  const blocks=times.map((t,i)=>({
+    i,
+    start:minutesFromTime(t[1]),
+    end:minutesFromTime(t[2]),
+    course:baseSchedule[letter][i]
+  }));
+
+  for(const b of blocks){
+    if(mins>=b.start && mins<b.end){
+      const secondsLeft=Math.max(0,Math.ceil((b.end-mins)*60));
+      return {
+        kind:'class',
+        title:classDisplay(b.course,d),
+        detail:`${times[b.i][0]} · Room ${roomDisplay(b.course,d)} · ${teachers[b.course]}`,
+        secondsLeft,
+        end:times[b.i][2]
+      };
+    }
+  }
+
+  const lunchStart=12*60, lunchEnd=12*60+35;
+  if(mins>=lunchStart && mins<lunchEnd){
+    return {kind:'lunch',title:'Lunch',detail:'12:00–12:35',secondsLeft:Math.ceil((lunchEnd-mins)*60)};
+  }
+
+  if(mins<blocks[0].start){
+    return {kind:'before',title:'Before school',detail:`First class: ${classDisplay(blocks[0].course,d)} at ${formatTime(times[0][1])}`,secondsLeft:Math.ceil((blocks[0].start-mins)*60)};
+  }
+
+  for(let i=0;i<blocks.length-1;i++){
+    const currentEnd=blocks[i].end;
+    const nextStart=(i===2)?lunchStart:blocks[i+1].start;
+    if(mins>=currentEnd && mins<nextStart){
+      const nextCourse=(i===2)?null:blocks[i+1].course;
+      return i===2
+        ? {kind:'passing',title:'Heading to lunch',detail:'Lunch starts at 12:00',secondsLeft:Math.ceil((lunchStart-mins)*60)}
+        : {kind:'passing',title:'Passing period',detail:`Next: ${classDisplay(nextCourse,d)} · Room ${roomDisplay(nextCourse,d)}`,secondsLeft:Math.ceil((blocks[i+1].start-mins)*60)};
+    }
+  }
+
+  if(mins>=lunchEnd && mins<blocks[3].start){
+    return {kind:'passing',title:'Lunch is over',detail:`Next: ${classDisplay(blocks[3].course,d)} · Room ${roomDisplay(blocks[3].course,d)}`,secondsLeft:Math.ceil((blocks[3].start-mins)*60)};
+  }
+
+  if(mins>=blocks[4].end){
+    return {kind:'after',title:'School is done',detail:'You made it. Add anything after school to your planner.'};
+  }
+
+  return {kind:'passing',title:'Between classes',detail:'Check your schedule for what is next.'};
+}
+function formatCountdown(totalSeconds){
+  if(totalSeconds==null) return '';
+  const s=Math.max(0,totalSeconds);
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  if(h) return `${h}h ${m}m`;
+  return `${m}m ${String(sec).padStart(2,'0')}s`;
+}
+function renderLiveStatus(){
+  const host=document.querySelector('#liveStatus');
+  if(!host) return;
+  const status=currentSchoolStatus(new Date());
+  host.className=`live-status ${status.kind}`;
+  host.innerHTML=`
+    <div class="live-pulse"></div>
+    <div class="live-copy">
+      <div class="eyebrow">RIGHT NOW</div>
+      <div class="live-title">${status.title}</div>
+      <div class="live-detail">${status.detail||''}</div>
+    </div>
+    ${status.secondsLeft!=null?`<div class="live-countdown"><strong>${formatCountdown(status.secondsLeft)}</strong><span>${status.kind==='class'?'left in class':'until next'}</span></div>`:''}
+  `;
+}
+
 function renderToday(){
   const d=selectedDate, letter=getDayLetter(d), dayItems=getItemsFor(d), done=dayItems.filter(i=>i.done).length;
   const chip=letter?letter:(isWeekend(d)?'Weekend':'No School');
@@ -187,6 +269,7 @@ function renderToday(){
         <div class="day-chip ${chipClass}">${chip}</div>
       </div>
     </section>
+    ${isSameDay(d,new Date())?'<section id="liveStatus" class="live-status"></section>':''}
     <div class="grid-2">
       <section class="card">
         <div class="card-head">
@@ -211,6 +294,7 @@ function renderToday(){
   document.querySelector('#addToday').onclick=()=>openDialog(d);
   document.querySelector('#scheduleOpen').onclick=()=>switchView('schedule');
   wireTasks();
+  if(isSameDay(d,new Date())) renderLiveStatus();
 }
 
 function renderScheduleList(d,letter){
@@ -304,4 +388,5 @@ function renderSchedule(){
 
 function renderAll(){renderToday();renderWeek();renderCalendar();renderSchedule()}
 renderAll();
+setInterval(()=>renderLiveStatus(),1000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
