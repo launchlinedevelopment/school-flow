@@ -123,6 +123,13 @@ const seededBbyoMeetings = [
   {id:'bbyo-fallcon-1',title:'FallCon Steering Meeting #1',mode:'Online',startDate:'2026-09-28',startTime:'18:00',endTime:'19:30',recurrence:'none',url:'https://bbyo-org.zoom.us/j/88681936317',location:''}
 ];
 
+const seededCounterparts = [
+  {id:'josh',name:'Josh Matthews',chapter:'East Brunswick AZA',lastCheckIn:'',nextFollowUp:'',notes:''},
+  {id:'charlie',name:'Charlie Mason',chapter:'Marlboro AZA',lastCheckIn:'',nextFollowUp:'',notes:'Home Chapter'},
+  {id:'ryan',name:'Ryan Feldman',chapter:"T'sahal BBYO",lastCheckIn:'',nextFollowUp:'',notes:''},
+  {id:'jordan',name:'Jordan Feldman',chapter:'Chavi BBYO',lastCheckIn:'',nextFollowUp:'',notes:'Focus Chapter'}
+];
+
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -134,6 +141,8 @@ let colleges = loadColleges();
 let collegeComparisons = loadCollegeComparisons();
 let bbyoMeetings = loadBbyoMeetings();
 let bbyoChecks = loadBbyoChecks();
+let bbyoVisits = loadBbyoVisits();
+let bbyoCounterparts = loadBbyoCounterparts();
 migrateBbyoSeedData();
 
 const views = {
@@ -174,7 +183,7 @@ document.querySelector('#exportDataBtn')?.addEventListener('click',exportAllData
 document.querySelector('#importDataInput')?.addEventListener('change',importAllData);
 
 function exportAllData(){
-  const data={version:2,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons,bbyoMeetings,bbyoChecks};
+  const data={version:3,exportedAt:new Date().toISOString(),items,classNotes,colleges,collegeComparisons,bbyoMeetings,bbyoChecks,bbyoVisits,bbyoCounterparts};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -196,7 +205,9 @@ function importAllData(event){
       if(Array.isArray(data.collegeComparisons)) collegeComparisons=data.collegeComparisons;
       if(Array.isArray(data.bbyoMeetings)) bbyoMeetings=data.bbyoMeetings;
       if(data.bbyoChecks&&typeof data.bbyoChecks==='object') bbyoChecks=data.bbyoChecks;
-      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons(); persistBbyoMeetings(); persistBbyoChecks();
+      if(Array.isArray(data.bbyoVisits)) bbyoVisits=data.bbyoVisits;
+      if(Array.isArray(data.bbyoCounterparts)) bbyoCounterparts=data.bbyoCounterparts;
+      persist(); persistClassNotes(); persistColleges(); persistCollegeComparisons(); persistBbyoMeetings(); persistBbyoChecks(); persistBbyoVisits(); persistBbyoCounterparts();
       renderAll();
       alert('Backup imported successfully.');
     }catch{alert('That backup file could not be read.')}
@@ -293,6 +304,18 @@ function migrateBbyoSeedData(){
 }
 function loadBbyoChecks(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoChecks')||'{}')}catch{return{}}}
 function persistBbyoChecks(){localStorage.setItem('schoolFlowBbyoChecks',JSON.stringify(bbyoChecks))}
+function loadBbyoVisits(){try{return JSON.parse(localStorage.getItem('schoolFlowBbyoVisits')||'[]')}catch{return[]}}
+function persistBbyoVisits(){localStorage.setItem('schoolFlowBbyoVisits',JSON.stringify(bbyoVisits))}
+function loadBbyoCounterparts(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('schoolFlowBbyoCounterparts')||'null');
+    if(Array.isArray(saved)&&saved.length)return saved;
+  }catch{}
+  localStorage.setItem('schoolFlowBbyoCounterparts',JSON.stringify(seededCounterparts));
+  return seededCounterparts.map(x=>({...x}));
+}
+function persistBbyoCounterparts(){localStorage.setItem('schoolFlowBbyoCounterparts',JSON.stringify(bbyoCounterparts))}
+function meetingsForDate(d){return bbyoMeetings.filter(m=>meetingOccursOn(m,d)).sort((a,b)=>a.startTime.localeCompare(b.startTime))}
 function mondayKey(date=new Date()){
   const d=startOfDay(date), offset=(d.getDay()+6)%7;
   return key(addDays(d,-offset));
@@ -486,6 +509,9 @@ function buildAgendaEntries(d,letter){
   getItemsFor(d).forEach(item=>{
     entries.push({kind:'plan',sort:item.time?minutesFromTime(item.time):24*60+1,item});
   });
+  meetingsForDate(d).forEach(meeting=>{
+    entries.push({kind:'bbyo',sort:minutesFromTime(meeting.startTime),meeting});
+  });
   return entries.sort((a,b)=>a.sort-b.sort || (a.kind==='class'?-1:1));
 }
 function renderAgenda(d,letter,compact=false){
@@ -504,6 +530,15 @@ function renderAgenda(d,letter,compact=false){
     if(entry.kind==='lunch'){
       if(compact) return '<div class="mini-item lunch-mini"><strong>Lunch</strong><div class="tiny">12:00 PM–12:35 PM</div></div>';
       return '<div class="lunch-row agenda-lunch"><span><strong>Lunch</strong></span><strong>12:00–12:35</strong></div>';
+    }
+    if(entry.kind==='bbyo'){
+      const m=entry.meeting;
+      if(compact) return `<div class="mini-item bbyo-mini"><strong>${esc(m.title)}</strong><div class="tiny">${formatTime(m.startTime)}${m.endTime?'–'+formatTime(m.endTime):''} · BBYO</div></div>`;
+      return `<div class="agenda-plan bbyo-agenda">
+        <div class="agenda-plan-time">${formatTime(m.startTime)}</div>
+        <div><div class="agenda-plan-title">${esc(m.title)}</div><div class="agenda-plan-meta">BBYO · ${esc(m.mode)}${m.endTime?' · ends '+formatTime(m.endTime):''}</div></div>
+        <div class="agenda-plan-actions"><div class="agenda-plan-chip">BBYO</div>${m.url?`<a class="edit-event-btn" href="${esc(m.url)}" target="_blank" rel="noopener">Join</a>`:''}</div>
+      </div>`;
     }
     const i=entry.item;
     if(compact) return `<div class="mini-item plan-mini ${i.type==='College'?'college-mini':''}"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):'Anytime'} · ${i.type}</div></div>`;
@@ -632,12 +667,12 @@ function renderCalendar(){
   document.querySelectorAll('.cal-day').forEach(c=>c.onclick=()=>{selectedDate=new Date(c.dataset.date+'T12:00:00');renderToday();switchView('today')});
 }
 function renderCalDay(d,currentMonth){
-  const letter=getDayLetter(d), list=getItemsFor(d), special=specialDays[key(d)], closed=closedDates.has(key(d));
+  const letter=getDayLetter(d), list=getItemsFor(d), bbyoList=meetingsForDate(d), special=specialDays[key(d)], closed=closedDates.has(key(d));
   return `<div class="cal-day ${d.getMonth()!==currentMonth?'other':''} ${isSameDay(d,new Date())?'today':''}" data-date="${key(d)}">
     <div class="cal-num">${d.getDate()}</div>
     ${letter?`<div class="cal-letter">${letter}</div>`:''}
     <div class="cal-events">
-      ${list.slice(0,2).map(i=>`<div><span class="cal-dot"></span>${i.time?formatTime(i.time)+' · ':''}${esc(i.title)}</div>`).join('')}
+      ${[...list.map(i=>({time:i.time,title:i.title,type:i.type})),...bbyoList.map(m=>({time:m.startTime,title:m.title,type:'BBYO'}))].sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99')).slice(0,2).map(i=>`<div class="${i.type==='BBYO'?'cal-bbyo-event':''}"><span class="cal-dot"></span>${i.time?formatTime(i.time)+' · ':''}${esc(i.title)}</div>`).join('')}
       ${list.length>2?`<div>+${list.length-2} more</div>`:''}
     </div>
     ${closed?'<div class="closed-note">No school</div>':special?`<div class="closed-note">${special}</div>`:''}
@@ -884,6 +919,42 @@ function renderBbyo(){
       </section>
     </div>
 
+    <section class="bbyo-panel bbyo-crm-panel">
+      <div class="bbyo-panel-head"><div><div class="bbyo-kicker">COUNTERPART CRM</div><h2>People to Reach Out To</h2><p>Track check-ins, notes, and who needs a follow-up.</p></div></div>
+      <div class="crm-grid">
+        ${bbyoCounterparts.map(c=>{
+          const overdue=c.nextFollowUp && c.nextFollowUp<=todayKey;
+          return `<article class="crm-card ${overdue?'needs-followup':''}">
+            <div class="crm-card-head"><div class="crm-avatar">${c.name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong>${esc(c.name)}</strong><span>${esc(c.chapter)}</span></div>${overdue?'<b>Follow up</b>':''}</div>
+            <div class="crm-fields">
+              <label>Last check-in<input class="crm-last" data-id="${c.id}" type="date" value="${c.lastCheckIn||''}"></label>
+              <label>Next follow-up<input class="crm-next" data-id="${c.id}" type="date" value="${c.nextFollowUp||''}"></label>
+            </div>
+            <label class="crm-notes-label">Notes<textarea class="crm-notes" data-id="${c.id}" rows="2" placeholder="What did you talk about?">${esc(c.notes||'')}</textarea></label>
+          </article>`;
+        }).join('')}
+      </div>
+    </section>
+
+    <section class="bbyo-panel bbyo-visits-panel">
+      <div class="bbyo-panel-head"><div><div class="bbyo-kicker">CHAPTER VISITS</div><h2>Visit Tracker</h2><p>Save what happened, what they need, and what you should do next.</p></div><span class="visit-count">${bbyoVisits.length} visits</span></div>
+      <form id="chapterVisitForm" class="visit-form">
+        <input id="visitChapter" placeholder="Chapter" required>
+        <input id="visitDate" type="date" required>
+        <input id="visitWentWell" placeholder="What went well?">
+        <input id="visitNeedsHelp" placeholder="What do they need help with?">
+        <input id="visitFollowUp" placeholder="Follow-up / next step">
+        <button type="submit" class="bbyo-add-visit-btn">Log Visit ＋</button>
+      </form>
+      <div class="visit-history">
+        ${bbyoVisits.length?bbyoVisits.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(v=>`<article class="visit-card">
+          <div class="visit-date-block"><strong>${new Date(v.date+'T12:00:00').getDate()}</strong><span>${niceDate(new Date(v.date+'T12:00:00'),{month:'short'})}</span></div>
+          <div class="visit-copy"><h3>${esc(v.chapter)}</h3>${v.wentWell?`<p><b>Went well:</b> ${esc(v.wentWell)}</p>`:''}${v.needsHelp?`<p><b>Needs help:</b> ${esc(v.needsHelp)}</p>`:''}${v.followUp?`<p><b>Next:</b> ${esc(v.followUp)}</p>`:''}</div>
+          <button class="visit-delete" data-id="${v.id}">×</button>
+        </article>`).join(''):'<div class="empty compact-empty">No chapter visits logged yet.</div>'}
+      </div>
+    </section>
+
     <section class="bbyo-panel bbyo-meeting-panel">
       <div class="bbyo-panel-head meeting-panel-head">
         <div><div class="bbyo-kicker">CALENDAR</div><h2>Upcoming Meetings</h2></div>
@@ -926,6 +997,17 @@ function renderBbyo(){
 
   document.querySelectorAll('.bbyo-check').forEach(cb=>cb.onchange=()=>{setCheckDone(cb.dataset.id,cb.checked,cb.dataset.scope);renderBbyo()});
   document.querySelectorAll('.meeting-delete').forEach(btn=>btn.onclick=()=>{bbyoMeetings=bbyoMeetings.filter(x=>x.id!==btn.dataset.id);persistBbyoMeetings();renderBbyo()});
+  document.querySelectorAll('.crm-last').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.lastCheckIn=el.value;persistBbyoCounterparts();renderBbyo()}});
+  document.querySelectorAll('.crm-next').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.nextFollowUp=el.value;persistBbyoCounterparts();renderBbyo()}});
+  document.querySelectorAll('.crm-notes').forEach(el=>el.onchange=()=>{const c=bbyoCounterparts.find(x=>x.id===el.dataset.id);if(c){c.notes=el.value;persistBbyoCounterparts()}});
+  document.querySelectorAll('.visit-delete').forEach(btn=>btn.onclick=()=>{bbyoVisits=bbyoVisits.filter(x=>x.id!==btn.dataset.id);persistBbyoVisits();renderBbyo()});
+  document.querySelector('#chapterVisitForm')?.addEventListener('submit',e=>{
+    e.preventDefault();
+    const chapter=document.querySelector('#visitChapter').value.trim(), date=document.querySelector('#visitDate').value;
+    if(!chapter||!date)return;
+    bbyoVisits.push({id:'visit-'+Date.now(),chapter,date,wentWell:document.querySelector('#visitWentWell').value.trim(),needsHelp:document.querySelector('#visitNeedsHelp').value.trim(),followUp:document.querySelector('#visitFollowUp').value.trim()});
+    persistBbyoVisits();renderBbyo();
+  });
   document.querySelector('#bbyoMeetingForm')?.addEventListener('submit',e=>{
     e.preventDefault();
     const title=document.querySelector('#bbyoMeetingTitle').value.trim(), startDate=document.querySelector('#bbyoMeetingDate').value, startTime=document.querySelector('#bbyoMeetingStart').value;
