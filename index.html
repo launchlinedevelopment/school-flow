@@ -33,6 +33,7 @@
           <button class="nav-item" data-view="week"><span>▦</span>Week</button>
           <button class="nav-item" data-view="calendar"><span>◫</span>Calendar</button>
           <button class="nav-item" data-view="schedule"><span>⌁</span>Block Schedule</button>
+          <button class="nav-item" data-view="college"><span>◈</span>College Apps</button>
         </nav>
         <div class="sidebar-card">
           <div class="eyebrow">ROTATION</div>
@@ -40,9 +41,13 @@
           <div class="rotation-row"><span>Cycle</span><strong>A → G</strong></div>
           <div class="rotation-row"><span>Days off</span><strong>Do not advance</strong></div>
         </div>
-        <div class="sidebar-card mini-quote">
-          <div class="eyebrow">FOCUS</div>
-          <p>Know what is next. Get it done. Move on.</p>
+        <div class="sidebar-card data-card">
+          <div class="eyebrow">DATA SAFETY</div>
+          <p>Your events stay saved until you delete them.</p>
+          <div class="data-actions">
+            <button class="ghost-btn mini-btn" id="exportDataBtn">Export backup</button>
+            <label class="ghost-btn mini-btn import-label">Import backup<input id="importDataInput" type="file" accept="application/json" hidden></label>
+          </div>
         </div>
       </aside>
 
@@ -51,6 +56,7 @@
         <div id="weekView" class="view"></div>
         <div id="calendarView" class="view"></div>
         <div id="scheduleView" class="view"></div>
+        <div id="collegeView" class="view"></div>
       </section>
     </main>
   </div>
