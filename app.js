@@ -82,6 +82,7 @@ let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth()
 let items = loadItems();
 let classNotes = loadClassNotes();
 let activeNotesCourse = null;
+let editingItemId = null;
 
 const views = {
   today:document.querySelector('#todayView'),
@@ -96,6 +97,9 @@ const classNotesDialog = document.querySelector('#classNotesDialog');
 const classNotesTitle = document.querySelector('#classNotesTitle');
 const classNotesMeta = document.querySelector('#classNotesMeta');
 const classNotesText = document.querySelector('#classNotesText');
+const itemDialogEyebrow = document.querySelector('#itemDialogEyebrow');
+const itemDialogTitle = document.querySelector('#itemDialogTitle');
+const saveItemBtn = document.querySelector('#saveItemBtn');
 
 [...new Set(Object.values(baseSchedule).flat())].sort().forEach(c=>{
   classSelect.insertAdjacentHTML('beforeend', `<option>${c}</option>`);
@@ -179,29 +183,54 @@ function notePreview(course){
   const clean=esc(note.replace(/\s+/g,' '));
   return `<div class="class-note-preview">📝 ${clean.length>90?clean.slice(0,90)+'…':clean}</div>`;
 }
-function openDialog(date){
+function openDialog(date,itemId=null){
   form.reset();
-  document.querySelector('#itemDate').value=key(date);
+  editingItemId=itemId;
+  const item=itemId?items.find(x=>x.id===itemId):null;
+  itemDialogEyebrow.textContent=item?'EDIT EVENT':'NEW PLAN';
+  itemDialogTitle.textContent=item?'Edit your event':'Add something to your day';
+  saveItemBtn.textContent=item?'Save changes':'Save plan';
+  document.querySelector('#itemDate').value=item?.date||key(date);
+  document.querySelector('#itemTitle').value=item?.title||'';
+  document.querySelector('#itemTime').value=item?.time||'';
+  document.querySelector('#itemType').value=item?.type||'Homework';
+  document.querySelector('#itemPriority').value=item?.priority||'Normal';
+  document.querySelector('#itemClass').value=item?.className||'';
+  document.querySelector('#itemNotes').value=item?.notes||'';
   dialog.showModal();
   setTimeout(()=>document.querySelector('#itemTitle').focus(),60);
 }
 function saveItem(){
   const title=document.querySelector('#itemTitle').value.trim();
   if(!title)return;
-  items.push({
-    id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),
+  const data={
     title,
     date:document.querySelector('#itemDate').value,
     time:document.querySelector('#itemTime').value,
     type:document.querySelector('#itemType').value,
     priority:document.querySelector('#itemPriority').value,
     className:document.querySelector('#itemClass').value,
-    notes:document.querySelector('#itemNotes').value.trim(),
-    done:false
-  });
+    notes:document.querySelector('#itemNotes').value.trim()
+  };
+  if(editingItemId){
+    const existing=items.find(x=>x.id===editingItemId);
+    if(existing) Object.assign(existing,data);
+  } else {
+    items.push({
+      id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),
+      ...data,
+      done:false
+    });
+  }
+  editingItemId=null;
   persist();
   dialog.close();
   renderAll();
+}
+function editItem(id){
+  const item=items.find(x=>x.id===id);
+  if(!item)return;
+  openDialog(new Date(item.date+'T12:00:00'),id);
 }
 function toggleItem(id){const i=items.find(x=>x.id===id);if(i)i.done=!i.done;persist();renderAll()}
 function deleteItem(id){items=items.filter(x=>x.id!==id);persist();renderAll()}
@@ -319,11 +348,11 @@ function renderAgenda(d,letter,compact=false){
       return '<div class="lunch-row agenda-lunch"><span><strong>Lunch</strong></span><strong>12:00–12:35</strong></div>';
     }
     const i=entry.item;
-    if(compact) return `<div class="mini-item plan-mini"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):'Anytime'} · ${i.type}</div></div>`;
-    return `<div class="agenda-plan ${i.priority==='High'?'high':''}">
+    if(compact) return `<div class="mini-item plan-mini ${i.type==='College'?'college-mini':''}"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):'Anytime'} · ${i.type}</div></div>`;
+    return `<div class="agenda-plan ${i.priority==='High'?'high':''} ${i.type==='College'?'college':''}" data-id="${i.id}">
       <div class="agenda-plan-time">${i.time?formatTime(i.time):'Anytime'}</div>
       <div><div class="agenda-plan-title">${esc(i.title)}</div><div class="agenda-plan-meta">${[i.type,i.className&&classDisplay(i.className,d),i.notes].filter(Boolean).map(esc).join(' · ')}</div></div>
-      <div class="agenda-plan-chip">PLAN</div>
+      <div class="agenda-plan-actions"><div class="agenda-plan-chip">${i.type==='College'?'COLLEGE':'PLAN'}</div><button class="edit-event-btn" data-id="${i.id}">Edit</button></div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -374,8 +403,8 @@ function renderToday(){
     </div>`;
   document.querySelector('#addToday').onclick=()=>openDialog(d);
   document.querySelector('#scheduleOpen').onclick=()=>switchView('schedule');
-  wireTasks();
   wireClassNotes();
+  wireTasks();
   if(isSameDay(d,new Date())) renderLiveStatus();
 }
 
@@ -390,10 +419,20 @@ function renderTasks(list){
       <div class="task-title">${esc(i.title)}</div>
       <div class="task-meta">${[i.time&&formatTime(i.time),i.type,i.className&&classDisplay(i.className,new Date(i.date+'T12:00:00')),i.priority==='High'?'High priority':''].filter(Boolean).join(' · ')}</div>
     </div>
-    <button class="delete-btn" aria-label="Delete">×</button>
+    <div class="task-actions"><button class="edit-task-btn" aria-label="Edit">✎</button><button class="delete-btn" aria-label="Delete">×</button></div>
   </div>`).join('');
 }
-function wireTasks(){document.querySelectorAll('.task-row').forEach(row=>{row.querySelector('.check-btn').onclick=()=>toggleItem(row.dataset.id);row.querySelector('.delete-btn').onclick=()=>deleteItem(row.dataset.id)})}
+function wireTasks(){
+  document.querySelectorAll('.task-row').forEach(row=>{
+    row.querySelector('.check-btn').onclick=()=>toggleItem(row.dataset.id);
+    row.querySelector('.delete-btn').onclick=()=>deleteItem(row.dataset.id);
+    const edit=row.querySelector('.edit-task-btn');
+    if(edit) edit.onclick=()=>editItem(row.dataset.id);
+  });
+  document.querySelectorAll('.edit-event-btn').forEach(btn=>{
+    btn.onclick=()=>editItem(btn.dataset.id);
+  });
+}
 function formatTime(t){const [h,m]=t.split(':').map(Number);return `${((h+11)%12)+1}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`}
 function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 
