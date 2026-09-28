@@ -76,6 +76,8 @@ let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let calendarMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
 let items = loadItems();
+let classNotes = loadClassNotes();
+let activeNotesCourse = null;
 
 const views = {
   today:document.querySelector('#todayView'),
@@ -86,6 +88,10 @@ const views = {
 const dialog = document.querySelector('#itemDialog');
 const form = document.querySelector('#itemForm');
 const classSelect = document.querySelector('#itemClass');
+const classNotesDialog = document.querySelector('#classNotesDialog');
+const classNotesTitle = document.querySelector('#classNotesTitle');
+const classNotesMeta = document.querySelector('#classNotesMeta');
+const classNotesText = document.querySelector('#classNotesText');
 
 [...new Set(Object.values(baseSchedule).flat())].sort().forEach(c=>{
   classSelect.insertAdjacentHTML('beforeend', `<option>${c}</option>`);
@@ -101,6 +107,7 @@ document.querySelector('#todayBtn').addEventListener('click',()=>{
 });
 document.querySelector('#newItemBtn').addEventListener('click',()=>openDialog(selectedDate));
 document.querySelector('#saveItemBtn').addEventListener('click',(e)=>{e.preventDefault();saveItem();});
+document.querySelector('#saveClassNotesBtn').addEventListener('click',(e)=>{e.preventDefault();saveClassNotes();});
 
 function switchView(name,btn){
   Object.values(views).forEach(v=>v.classList.remove('active'));
@@ -143,6 +150,31 @@ function isSameDay(a,b){return key(a)===key(b)}
 function getItemsFor(d){return items.filter(i=>i.date===key(d)).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'))}
 function loadItems(){try{return JSON.parse(localStorage.getItem('schoolFlowItems')||'[]')}catch{return[]}}
 function persist(){localStorage.setItem('schoolFlowItems',JSON.stringify(items))}
+function loadClassNotes(){try{return JSON.parse(localStorage.getItem('schoolFlowClassNotes')||'{}')}catch{return{}}}
+function persistClassNotes(){localStorage.setItem('schoolFlowClassNotes',JSON.stringify(classNotes))}
+function openClassNotes(course,date=selectedDate){
+  activeNotesCourse=course;
+  classNotesTitle.textContent=classDisplay(course,date);
+  classNotesMeta.textContent=`${teachers[course]||''}${roomDisplay(course,date)?` · Room ${roomDisplay(course,date)}`:''}`;
+  classNotesText.value=classNotes[course]||'';
+  classNotesDialog.showModal();
+  setTimeout(()=>classNotesText.focus(),60);
+}
+function saveClassNotes(){
+  if(!activeNotesCourse)return;
+  const text=classNotesText.value.trim();
+  if(text) classNotes[activeNotesCourse]=text;
+  else delete classNotes[activeNotesCourse];
+  persistClassNotes();
+  classNotesDialog.close();
+  renderAll();
+}
+function notePreview(course){
+  const note=(classNotes[course]||'').trim();
+  if(!note)return '';
+  const clean=esc(note.replace(/\s+/g,' '));
+  return `<div class="class-note-preview">📝 ${clean.length>90?clean.slice(0,90)+'…':clean}</div>`;
+}
 function openDialog(date){
   form.reset();
   document.querySelector('#itemDate').value=key(date);
@@ -252,12 +284,57 @@ function renderLiveStatus(){
   `;
 }
 
+function buildAgendaEntries(d,letter){
+  const entries=[];
+  if(letter){
+    baseSchedule[letter].forEach((course,i)=>{
+      entries.push({kind:'class',sort:minutesFromTime(times[i][1]),course,i});
+    });
+    entries.push({kind:'lunch',sort:12*60,title:'Lunch'});
+  }
+  getItemsFor(d).forEach(item=>{
+    entries.push({kind:'plan',sort:item.time?minutesFromTime(item.time):24*60+1,item});
+  });
+  return entries.sort((a,b)=>a.sort-b.sort || (a.kind==='class'?-1:1));
+}
+function renderAgenda(d,letter,compact=false){
+  const entries=buildAgendaEntries(d,letter);
+  if(!entries.length)return `<div class="empty">${isWeekend(d)?'No classes today. Add plans to build your day.':'School is closed. Add plans for the day if you have anything going on.'}</div>`;
+  return `<div class="${compact?'mini-agenda':'schedule-list'}">${entries.map(entry=>{
+    if(entry.kind==='class'){
+      const c=entry.course,i=entry.i;
+      if(compact) return `<div class="mini-item class-mini"><strong>${classDisplay(c,d)}</strong><div class="tiny">${formatTime(times[i][1])}–${formatTime(times[i][2])} · ${roomDisplay(c,d)}</div></div>`;
+      return `<div class="class-row agenda-row">
+        <div class="time">${formatTime(times[i][1])}<br>${formatTime(times[i][2])}</div>
+        <div class="class-content"><div class="class-name">${classDisplay(c,d)}</div><div class="class-room">${teachers[c]} · Room ${roomDisplay(c,d)}</div>${notePreview(c)}</div>
+        <div class="class-actions"><div class="class-badge">${times[i][0]}</div><button class="notes-btn" data-course="${esc(c)}">Notes</button></div>
+      </div>`;
+    }
+    if(entry.kind==='lunch'){
+      if(compact) return '<div class="mini-item lunch-mini"><strong>Lunch</strong><div class="tiny">12:00 PM–12:35 PM</div></div>';
+      return '<div class="lunch-row agenda-lunch"><span><strong>Lunch</strong></span><strong>12:00–12:35</strong></div>';
+    }
+    const i=entry.item;
+    if(compact) return `<div class="mini-item plan-mini"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):'Anytime'} · ${i.type}</div></div>`;
+    return `<div class="agenda-plan ${i.priority==='High'?'high':''}">
+      <div class="agenda-plan-time">${i.time?formatTime(i.time):'Anytime'}</div>
+      <div><div class="agenda-plan-title">${esc(i.title)}</div><div class="agenda-plan-meta">${[i.type,i.className&&classDisplay(i.className,d),i.notes].filter(Boolean).map(esc).join(' · ')}</div></div>
+      <div class="agenda-plan-chip">PLAN</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function wireClassNotes(){
+  document.querySelectorAll('.notes-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>openClassNotes(btn.dataset.course,selectedDate));
+  });
+}
+
 function renderToday(){
   const d=selectedDate, letter=getDayLetter(d), dayItems=getItemsFor(d), done=dayItems.filter(i=>i.done).length;
   const chip=letter?letter:(isWeekend(d)?'Weekend':'No School');
   const chipClass=letter?'':(isWeekend(d)?'weekend':'closed');
   const special=specialDays[key(d)];
-  const schedule=letter?renderScheduleList(d,letter):`<div class="empty">${isWeekend(d)?'No classes today. Add your plans and activities below.':'School is closed. Your letter rotation stays exactly where it is.'}</div>`;
+  const schedule=renderAgenda(d,letter);
   views.today.innerHTML=`
     <section class="hero">
       <div class="hero-row">
@@ -294,16 +371,12 @@ function renderToday(){
   document.querySelector('#addToday').onclick=()=>openDialog(d);
   document.querySelector('#scheduleOpen').onclick=()=>switchView('schedule');
   wireTasks();
+  wireClassNotes();
   if(isSameDay(d,new Date())) renderLiveStatus();
 }
 
-function renderScheduleList(d,letter){
-  return `<div class="schedule-list">${baseSchedule[letter].map((c,i)=>`<div class="class-row">
-    <div class="time">${times[i][1]}<br>${times[i][2]}</div>
-    <div><div class="class-name">${classDisplay(c,d)}</div><div class="class-room">${teachers[c]} · Room ${roomDisplay(c,d)}</div></div>
-    <div class="class-badge">${times[i][0]}</div>
-  </div>${i===2?'<div class="lunch-row"><span>Lunch</span><strong>12:00–12:35</strong></div>':''}`).join('')}</div>`;
-}
+function renderScheduleList(d,letter){return renderAgenda(d,letter)}
+
 
 function renderTasks(list){
   if(!list.length)return '<div class="empty">Nothing planned yet. Add homework, practices, meetings, tests, or anything else.</div>';
@@ -331,16 +404,16 @@ function renderWeek(){
   document.querySelectorAll('.day-column').forEach(c=>c.ondblclick=()=>openDialog(new Date(c.dataset.date+'T12:00:00')));
 }
 function renderDayColumn(d){
-  const letter=getDayLetter(d), list=getItemsFor(d);
+  const letter=getDayLetter(d);
   return `<div class="day-column ${isSameDay(d,new Date())?'today':''}" data-date="${key(d)}">
     <div class="day-top">
       <div><strong>${niceDate(d,{weekday:'short'})}</strong><br><span>${niceDate(d,{month:'short',day:'numeric'})}</span></div>
       <div class="mini-letter">${letter||'—'}</div>
     </div>
-    ${letter?baseSchedule[letter].map((c,i)=>`<div class="mini-item"><strong>${classDisplay(c,d)}</strong><div class="tiny">${times[i][1]} · ${roomDisplay(c,d)}</div></div>`).join(''):`<div class="weekend-box">${closedDates.has(key(d))?'No school':'Weekend'}<br>Double-click to add a plan.</div>`}
-    ${list.map(i=>`<div class="mini-item"><strong>${esc(i.title)}</strong><div class="tiny">${i.time?formatTime(i.time):i.type}</div></div>`).join('')}
+    ${renderAgenda(d,letter,true)}
   </div>`;
 }
+
 
 function renderCalendar(){
   const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1,12),gridStart=addDays(first,-first.getDay());
@@ -363,7 +436,7 @@ function renderCalDay(d,currentMonth){
     <div class="cal-num">${d.getDate()}</div>
     ${letter?`<div class="cal-letter">${letter}</div>`:''}
     <div class="cal-events">
-      ${list.slice(0,2).map(i=>`<div><span class="cal-dot"></span>${esc(i.title)}</div>`).join('')}
+      ${list.slice(0,2).map(i=>`<div><span class="cal-dot"></span>${i.time?formatTime(i.time)+' · ':''}${esc(i.title)}</div>`).join('')}
       ${list.length>2?`<div>+${list.length-2} more</div>`:''}
     </div>
     ${closed?'<div class="closed-note">No school</div>':special?`<div class="closed-note">${special}</div>`:''}
